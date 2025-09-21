@@ -40,7 +40,7 @@ jobs:
     - name: Setup Buf
       uses: bufbuild/buf-setup-action@v1
       with:
-        github_token: ${{ secrets.GITHUB_TOKEN }}
+        github_token: ${{ secrets.PAT_AUTOMATION }}
 
     - name: Validate proto files
       run: |
@@ -76,7 +76,7 @@ jobs:
     - name: Setup Buf
       uses: bufbuild/buf-setup-action@v1
       with:
-        github_token: ${{ secrets.GITHUB_TOKEN }}
+        github_token: ${{ secrets.PAT_AUTOMATION }}
 
     - name: Install Go protoc plugins
       run: |
@@ -274,7 +274,7 @@ jobs:
     - name: Repository Dispatch
       uses: peter-evans/repository-dispatch@v2
       with:
-        token: ${{ secrets.REPO_ACCESS_TOKEN }}
+        token: ${{ secrets.PAT_AUTOMATION }}
         repository: traffic-tacos/${{ matrix.repo }}
         event-type: proto-contracts-updated
         client-payload: |
