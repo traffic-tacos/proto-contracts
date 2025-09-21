@@ -27,7 +27,7 @@ jobs:
     - name: Setup Buf
       uses: bufbuild/buf-setup-action@v1
       with:
-        github_token: ${{ secrets.GITHUB_TOKEN }}
+        github_token: ${{ github.token }}
 
     - name: Lint proto files
       run: buf lint
@@ -57,7 +57,7 @@ jobs:
     - name: Setup Buf
       uses: bufbuild/buf-setup-action@v1
       with:
-        github_token: ${{ secrets.GITHUB_TOKEN }}
+        github_token: ${{ github.token }}
 
     - name: Install protoc-gen-go
       run: |
@@ -99,7 +99,7 @@ jobs:
     - name: Setup Buf
       uses: bufbuild/buf-setup-action@v1
       with:
-        github_token: ${{ secrets.GITHUB_TOKEN }}
+        github_token: ${{ github.token }}
 
     - name: Generate Kotlin/Java code
       run: make generate-kotlin
@@ -142,7 +142,7 @@ jobs:
     - name: Setup Buf
       uses: bufbuild/buf-setup-action@v1
       with:
-        github_token: ${{ secrets.GITHUB_TOKEN }}
+        github_token: ${{ github.token }}
 
     - name: Install protoc-gen-go
       run: |

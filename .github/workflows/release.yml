@@ -40,7 +40,7 @@ jobs:
     - name: Setup Buf
       uses: bufbuild/buf-setup-action@v1
       with:
-        github_token: ${{ secrets.GITHUB_TOKEN }}
+        github_token: ${{ github.token }}
 
     - name: Validate proto files
       run: |
@@ -76,7 +76,7 @@ jobs:
     - name: Setup Buf
       uses: bufbuild/buf-setup-action@v1
       with:
-        github_token: ${{ secrets.GITHUB_TOKEN }}
+        github_token: ${{ github.token }}
 
     - name: Install Go protoc plugins
       run: |
