@@ -13,7 +13,7 @@ import "google/protobuf/timestamp.proto";
 
 // Inventory service manages seat availability and reservations
 // This service ensures zero overselling through DynamoDB conditional updates
-service Inventory {
+service InventoryService {
   // Check seat availability for the given event and seat selection
   rpc CheckAvailability(CheckAvailabilityRequest) returns (CheckAvailabilityResponse);
 

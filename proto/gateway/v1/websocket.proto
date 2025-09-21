@@ -7,7 +7,6 @@ option java_package = "com.traffic_tacos.gateway.v1";
 option java_multiple_files = true;
 option java_outer_classname = "WebSocketProto";
 
-import "proto/common/v1/types.proto";
 import "proto/common/v1/errors.proto";
 import "proto/reservation/v1/reservation.proto";
 import "proto/payment/v1/payment.proto";
@@ -17,27 +16,27 @@ import "google/protobuf/timestamp.proto";
 // Handles queue position updates, reservation status changes, payment updates
 service WebSocketService {
   // Establish real-time connection for queue updates
-  rpc StreamQueueUpdates(StreamQueueRequest) returns (stream QueueUpdateEvent);
+  rpc StreamQueueUpdates(StreamQueueUpdatesRequest) returns (stream StreamQueueUpdatesResponse);
 
   // Establish real-time connection for reservation updates
-  rpc StreamReservationUpdates(StreamReservationRequest) returns (stream ReservationUpdateEvent);
+  rpc StreamReservationUpdates(StreamReservationUpdatesRequest) returns (stream StreamReservationUpdatesResponse);
 
   // Establish real-time connection for payment updates
-  rpc StreamPaymentUpdates(StreamPaymentRequest) returns (stream PaymentUpdateEvent);
+  rpc StreamPaymentUpdates(StreamPaymentUpdatesRequest) returns (stream StreamPaymentUpdatesResponse);
 
   // Send a message to a specific user/session
   rpc SendMessage(SendMessageRequest) returns (SendMessageResponse);
 }
 
 // Stream queue updates request
-message StreamQueueRequest {
+message StreamQueueUpdatesRequest {
   string waiting_token = 1;
   string session_id = 2;
   string event_id = 3;
 }
 
 // Queue update event
-message QueueUpdateEvent {
+message StreamQueueUpdatesResponse {
   EventType type = 1;
   QueueUpdate queue_update = 2;
   SystemUpdate system_update = 3;
@@ -65,14 +64,14 @@ message SystemUpdate {
 }
 
 // Stream reservation updates request
-message StreamReservationRequest {
+message StreamReservationUpdatesRequest {
   string user_id = 1;
   string session_id = 2;
   repeated string reservation_ids = 3;  // Optional: filter specific reservations
 }
 
 // Reservation update event
-message ReservationUpdateEvent {
+message StreamReservationUpdatesResponse {
   EventType type = 1;
   ReservationUpdate reservation_update = 2;
   google.protobuf.Timestamp timestamp = 3;
@@ -90,14 +89,14 @@ message ReservationUpdate {
 }
 
 // Stream payment updates request
-message StreamPaymentRequest {
+message StreamPaymentUpdatesRequest {
   string user_id = 1;
   string session_id = 2;
   repeated string payment_intent_ids = 3;  // Optional: filter specific payments
 }
 
 // Payment update event
-message PaymentUpdateEvent {
+message StreamPaymentUpdatesResponse {
   EventType type = 1;
   PaymentUpdate payment_update = 2;
   google.protobuf.Timestamp timestamp = 3;

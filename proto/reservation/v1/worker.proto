@@ -16,23 +16,23 @@ import "google/protobuf/timestamp.proto";
 // Runs as Kubernetes Job with KEDA auto-scaling based on SQS queue depth
 service WorkerService {
   // Process reservation expiry events (60-second hold timeout)
-  rpc ProcessReservationExpiry(ProcessExpiryRequest) returns (ProcessExpiryResponse);
+  rpc ProcessReservationExpiry(ProcessReservationExpiryRequest) returns (ProcessReservationExpiryResponse);
 
   // Process payment result events (approved/failed)
-  rpc ProcessPaymentResult(ProcessPaymentRequest) returns (ProcessPaymentResponse);
+  rpc ProcessPaymentResult(ProcessPaymentResultRequest) returns (ProcessPaymentResultResponse);
 
   // Process compensation/retry events for failed operations
   rpc ProcessCompensation(ProcessCompensationRequest) returns (ProcessCompensationResponse);
 
   // Health check for worker instances
-  rpc HealthCheck(WorkerHealthRequest) returns (WorkerHealthResponse);
+  rpc HealthCheck(HealthCheckRequest) returns (HealthCheckResponse);
 
   // Get worker job status and metrics
   rpc GetJobStatus(GetJobStatusRequest) returns (GetJobStatusResponse);
 }
 
 // Process expiry request
-message ProcessExpiryRequest {
+message ProcessReservationExpiryRequest {
   string reservation_id = 1;
   string event_id = 2;
   repeated string seat_ids = 3;
@@ -43,7 +43,7 @@ message ProcessExpiryRequest {
 }
 
 // Process expiry response
-message ProcessExpiryResponse {
+message ProcessReservationExpiryResponse {
   ProcessingStatus status = 1;
   repeated common.v1.Seat released_seats = 2;
   google.protobuf.Timestamp processed_at = 3;
@@ -52,7 +52,7 @@ message ProcessExpiryResponse {
 }
 
 // Process payment request
-message ProcessPaymentRequest {
+message ProcessPaymentResultRequest {
   string reservation_id = 1;
   string payment_intent_id = 2;
   PaymentResultType result_type = 3;
@@ -62,7 +62,7 @@ message ProcessPaymentRequest {
 }
 
 // Process payment response
-message ProcessPaymentResponse {
+message ProcessPaymentResultResponse {
   ProcessingStatus status = 1;
   string order_id = 2;                   // Set if payment approved and committed
   repeated common.v1.Seat affected_seats = 3;
@@ -92,12 +92,12 @@ message ProcessCompensationResponse {
 }
 
 // Worker health request
-message WorkerHealthRequest {
+message HealthCheckRequest {
   string worker_instance_id = 1;
 }
 
 // Worker health response
-message WorkerHealthResponse {
+message HealthCheckResponse {
   WorkerStatus status = 1;
   int32 processed_events_count = 2;
   int32 failed_events_count = 3;

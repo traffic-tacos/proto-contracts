@@ -15,10 +15,10 @@ import "google/protobuf/timestamp.proto";
 // Primarily handles payment webhooks from payment-sim-api
 service WebhookService {
   // Receive payment webhook events
-  rpc ReceivePaymentWebhook(PaymentWebhookRequest) returns (PaymentWebhookResponse);
+  rpc ReceivePaymentWebhook(ReceivePaymentWebhookRequest) returns (ReceivePaymentWebhookResponse);
 
   // Receive reservation expiry webhook from EventBridge/Lambda
-  rpc ReceiveExpiryWebhook(ExpiryWebhookRequest) returns (ExpiryWebhookResponse);
+  rpc ReceiveExpiryWebhook(ReceiveExpiryWebhookRequest) returns (ReceiveExpiryWebhookResponse);
 
   // Register webhook endpoint for external services
   rpc RegisterWebhook(RegisterWebhookRequest) returns (RegisterWebhookResponse);
@@ -28,7 +28,7 @@ service WebhookService {
 }
 
 // Payment webhook request
-message PaymentWebhookRequest {
+message ReceivePaymentWebhookRequest {
   string webhook_id = 1;
   PaymentWebhookType event_type = 2;
   PaymentWebhookData data = 3;
@@ -39,7 +39,7 @@ message PaymentWebhookRequest {
 }
 
 // Payment webhook response
-message PaymentWebhookResponse {
+message ReceivePaymentWebhookResponse {
   bool accepted = 1;
   string correlation_id = 2;
   google.protobuf.Timestamp processed_at = 3;
@@ -48,7 +48,7 @@ message PaymentWebhookResponse {
 }
 
 // Expiry webhook request
-message ExpiryWebhookRequest {
+message ReceiveExpiryWebhookRequest {
   string webhook_id = 1;
   string reservation_id = 2;
   google.protobuf.Timestamp expired_at = 3;
@@ -57,7 +57,7 @@ message ExpiryWebhookRequest {
 }
 
 // Expiry webhook response
-message ExpiryWebhookResponse {
+message ReceiveExpiryWebhookResponse {
   bool accepted = 1;
   string correlation_id = 2;
   google.protobuf.Timestamp processed_at = 3;

@@ -7,7 +7,6 @@ option java_package = "com.traffic_tacos.common.v1";
 option java_multiple_files = true;
 option java_outer_classname = "AdminProto";
 
-import "proto/common/v1/types.proto";
 import "proto/common/v1/errors.proto";
 import "google/protobuf/timestamp.proto";
 
@@ -15,10 +14,10 @@ import "google/protobuf/timestamp.proto";
 // Provides operational capabilities across all services
 service AdminService {
   // Get system health status
-  rpc GetSystemHealth(SystemHealthRequest) returns (SystemHealthResponse);
+  rpc GetSystemHealth(GetSystemHealthRequest) returns (GetSystemHealthResponse);
 
   // Get service metrics
-  rpc GetMetrics(MetricsRequest) returns (MetricsResponse);
+  rpc GetMetrics(GetMetricsRequest) returns (GetMetricsResponse);
 
   // Configure system settings
   rpc UpdateConfig(UpdateConfigRequest) returns (UpdateConfigResponse);
@@ -27,20 +26,20 @@ service AdminService {
   rpc TriggerOperation(TriggerOperationRequest) returns (TriggerOperationResponse);
 
   // Get system logs
-  rpc GetLogs(LogsRequest) returns (LogsResponse);
+  rpc GetLogs(GetLogsRequest) returns (GetLogsResponse);
 
   // Emergency operations
   rpc EmergencyAction(EmergencyActionRequest) returns (EmergencyActionResponse);
 }
 
 // System health request
-message SystemHealthRequest {
+message GetSystemHealthRequest {
   repeated string services = 1;       // Optional: specific services to check
   bool include_dependencies = 2;      // Include downstream dependencies
 }
 
 // System health response
-message SystemHealthResponse {
+message GetSystemHealthResponse {
   SystemHealthStatus overall_status = 1;
   repeated ServiceHealthStatus services = 2;
   repeated DependencyStatus dependencies = 3;
@@ -69,7 +68,7 @@ message DependencyStatus {
 }
 
 // Metrics request
-message MetricsRequest {
+message GetMetricsRequest {
   string service = 1;                 // Optional: filter by service
   string metric_type = 2;             // Optional: filter by metric type
   google.protobuf.Timestamp start_time = 3;
@@ -78,7 +77,7 @@ message MetricsRequest {
 }
 
 // Metrics response
-message MetricsResponse {
+message GetMetricsResponse {
   repeated MetricData metrics = 1;
   google.protobuf.Timestamp collected_at = 2;
   Error error = 3;
@@ -133,7 +132,7 @@ message TriggerOperationResponse {
 }
 
 // Logs request
-message LogsRequest {
+message GetLogsRequest {
   string service = 1;                 // Optional: filter by service
   LogLevel level = 2;                 // Optional: filter by level
   google.protobuf.Timestamp start_time = 3;
@@ -143,7 +142,7 @@ message LogsRequest {
 }
 
 // Logs response
-message LogsResponse {
+message GetLogsResponse {
   repeated LogEntry logs = 1;
   bool has_more = 2;
   string next_cursor = 3;
