@@ -161,7 +161,7 @@ jobs:
 
   # Security and quality checks
   security:
-    name: Security & Quality
+    name: Security & Quality Scan
     runs-on: ubuntu-latest
     steps:
     - name: Checkout
@@ -177,9 +177,27 @@ jobs:
 
     - name: Upload Trivy scan results
       uses: github/codeql-action/upload-sarif@v3
-      if: always()
+      if: always() && github.repository_owner == 'traffic-tacos' && github.event_name != 'pull_request_target'
+      continue-on-error: true
       with:
         sarif_file: 'trivy-results.sarif'
+
+    - name: Display Trivy results summary
+      if: always()
+      run: |
+        echo "🔍 Trivy security scan completed"
+        if [ -f "trivy-results.sarif" ]; then
+          echo "📁 SARIF results saved to trivy-results.sarif"
+          # Extract and display high/critical vulnerabilities count
+          if command -v jq &> /dev/null; then
+            CRITICAL=$(jq '[.runs[0].results[] | select(.level == "error")] | length' trivy-results.sarif 2>/dev/null || echo "0")
+            HIGH=$(jq '[.runs[0].results[] | select(.level == "warning")] | length' trivy-results.sarif 2>/dev/null || echo "0")
+            echo "🚨 Critical vulnerabilities: $CRITICAL"
+            echo "⚠️  High vulnerabilities: $HIGH"
+          fi
+        else
+          echo "❌ No SARIF results file generated"
+        fi
 
     - name: Check for sensitive data
       run: |
