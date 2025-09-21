@@ -1,0 +1,256 @@
+---
+description: Traffic Tacos 플랫폼의 마이크로서비스 간 gRPC 통신을 위한 공통 프로토콜 정의 및 다중 언어 코드 생성을 지원하는 중앙화된 proto-contracts 저장소
+alwaysApply: true
+---
+
+# Proto-Contracts Repository Development Prompt
+
+## Project Overview
+Create a centralized `proto-contracts` repository for the Traffic Tacos microservices platform that supports multi-language code generation for Go and Kotlin/Java services.
+
+## Requirements
+
+### 1. Repository Structure
+```
+proto-contracts/
+├── proto/
+│   ├── reservation/v1/
+│   │   ├── reservation.proto
+│   │   └── inventory.proto
+│   ├── payment/v1/
+│   │   └── payment.proto
+│   └── common/v1/
+│       └── types.proto
+├── buf.gen.yaml          # Multi-language generation config
+├── buf.yaml              # Buf configuration
+├── go.mod               # Go module for gateway-api
+├── pom.xml              # Maven for Spring Kotlin services
+├── build.gradle.kts     # Alternative Gradle config
+├── scripts/
+│   ├── generate-go.sh
+│   ├── generate-kotlin.sh
+│   └── publish-all.sh
+├── .github/workflows/
+│   └── release.yml
+├── Makefile
+└── README.md
+```
+
+### 2. Proto Service Definitions
+
+#### Reservation Service (reservation.proto)
+```protobuf
+// Define gRPC services for:
+- CreateReservation(CreateReservationRequest) returns (CreateReservationResponse)
+- GetReservation(GetReservationRequest) returns (GetReservationResponse)
+- ConfirmReservation(ConfirmReservationRequest) returns (ConfirmReservationResponse)
+- CancelReservation(CancelReservationRequest) returns (CancelReservationResponse)
+
+// Include message types:
+- ReservationStatus enum (PENDING, CONFIRMED, CANCELLED, EXPIRED)
+- Reservation message with id, user_id, event_id, seat_number, status, timestamps
+- Error handling with status codes and messages
+```
+
+#### Inventory Service (inventory.proto)
+```protobuf
+// Define gRPC services for:
+- CheckAvailability(CheckAvailabilityRequest) returns (CheckAvailabilityResponse)
+- ReserveSeat(ReserveSeatRequest) returns (ReserveSeatResponse)
+- ReleaseSeat(ReleaseSeatRequest) returns (ReleaseSeatResponse)
+
+// Include message types:
+- Seat message with section, row, number, price, status
+- Event message with id, name, venue, datetime, total_seats
+- SeatStatus enum (AVAILABLE, RESERVED, SOLD)
+```
+
+#### Payment Service (payment.proto)
+```protobuf
+// Define gRPC services for:
+- CreatePaymentIntent(CreatePaymentIntentRequest) returns (CreatePaymentIntentResponse)
+- ProcessPayment(ProcessPaymentRequest) returns (ProcessPaymentResponse)
+- GetPaymentStatus(GetPaymentStatusRequest) returns (GetPaymentStatusResponse)
+
+// Include message types:
+- PaymentMethod enum (CREDIT_CARD, BANK_TRANSFER, MOBILE_PAY)
+- PaymentStatus enum (PENDING, PROCESSING, COMPLETED, FAILED, REFUNDED)
+- Payment message with id, reservation_id, amount, currency, method, status
+```
+
+#### Common Types (common/types.proto)
+```protobuf
+// Define common message types:
+- Money message with amount (int64) and currency (string)
+- Timestamp message (use google.protobuf.Timestamp)
+- ErrorCode enum and Error message
+- Pagination message for list requests
+- Address message for venue/user information
+```
+
+### 3. Buf Configuration
+
+#### buf.yaml
+```yaml
+version: v1
+breaking:
+  use:
+    - FILE
+lint:
+  use:
+    - DEFAULT
+```
+
+#### buf.gen.yaml for Multi-Language Generation
+```yaml
+version: v1
+plugins:
+  # Go generation
+  - plugin: buf.build/protocolbuffers/go
+    out: gen/go
+    opt:
+      - paths=source_relative
+      - module=github.com/traffic-tacos/proto-contracts
+  - plugin: buf.build/grpc/go
+    out: gen/go
+    opt:
+      - paths=source_relative
+      - require_unimplemented_servers=false
+
+  # Java/Kotlin generation
+  - plugin: buf.build/protocolbuffers/java
+    out: gen/java
+  - plugin: buf.build/grpc/java
+    out: gen/java
+```
+
+### 4. Go Module Setup
+```go
+// go.mod
+module github.com/traffic-tacos/proto-contracts
+
+go 1.22
+
+require (
+    google.golang.org/grpc v1.60.0
+    google.golang.org/protobuf v1.32.0
+)
+```
+
+### 5. Maven Configuration
+```xml
+<!-- pom.xml for Java/Kotlin artifact publishing -->
+<groupId>com.traffic-tacos</groupId>
+<artifactId>proto-contracts</artifactId>
+<version>1.0.0</version>
+<packaging>jar</packaging>
+
+<!-- Include protobuf and gRPC dependencies -->
+<!-- Setup maven-protobuf-plugin for code generation -->
+<!-- Configure maven-deploy-plugin for artifact publishing -->
+```
+
+### 6. Build Scripts
+
+#### Makefile
+```makefile
+# Include targets for:
+- generate: Generate code for all languages
+- generate-go: Generate Go code only
+- generate-java: Generate Java/Kotlin code only
+- lint: Run buf lint
+- breaking: Check for breaking changes
+- test: Run tests
+- publish: Publish artifacts
+- clean: Clean generated files
+```
+
+#### Scripts
+- `scripts/generate-go.sh`: Generate Go code and update go.mod
+- `scripts/generate-kotlin.sh`: Generate Kotlin code and build JAR
+- `scripts/publish-all.sh`: Publish both Go module and Maven artifact
+
+### 7. CI/CD Pipeline (.github/workflows/release.yml)
+```yaml
+# Workflow should:
+- Trigger on version tags (v1.x.x)
+- Run buf lint and breaking change detection
+- Generate code for both Go and Java/Kotlin
+- Run tests for generated code
+- Publish Go module (automatic via git tags)
+- Publish Maven artifact to repository
+- Create GitHub release with artifacts
+```
+
+### 8. Documentation Requirements
+
+#### README.md
+```markdown
+# Include sections for:
+- Project overview and architecture
+- Installation instructions for Go services
+- Installation instructions for Kotlin/Java services
+- Code generation instructions
+- Contributing guidelines
+- Versioning strategy
+- Usage examples for each service
+```
+
+### 9. Usage Examples
+
+#### For Go Services (gateway-api):
+```go
+import (
+    reservationpb "github.com/traffic-tacos/proto-contracts/gen/go/reservation/v1"
+    "google.golang.org/grpc"
+)
+
+// Example client usage
+conn, err := grpc.Dial("localhost:9001", grpc.WithInsecure())
+client := reservationpb.NewReservationServiceClient(conn)
+```
+
+#### For Kotlin Services (reservation-api):
+```kotlin
+// build.gradle.kts
+dependencies {
+    implementation("com.traffic-tacos:proto-contracts:1.0.0")
+    implementation("io.grpc:grpc-kotlin-stub:1.4.0")
+}
+
+// Example usage
+val client = ReservationServiceGrpcKt.ReservationServiceCoroutineStub(channel)
+```
+
+### 10. Versioning Strategy
+- Use semantic versioning (v1.x.x)
+- Breaking changes increment major version
+- New fields/services increment minor version
+- Bug fixes increment patch version
+- Maintain backward compatibility within major versions
+
+## Technical Requirements
+- Use buf for proto management and code generation
+- Support gRPC with proper error handling
+- Include comprehensive validation rules
+- Generate both synchronous and asynchronous client stubs
+- Ensure cross-language compatibility
+- Include proper documentation in proto files
+
+## Quality Standards
+- All proto files must have comprehensive comments
+- Include field validation rules where appropriate
+- Follow protobuf style guide
+- Ensure generated code compiles without warnings
+- Include unit tests for critical message serialization
+- Setup automated dependency updates
+
+## Deliverables
+1. Complete proto-contracts repository with all files
+2. Working code generation for Go and Kotlin/Java
+3. CI/CD pipeline for automated publishing
+4. Comprehensive documentation
+5. Usage examples for both language ecosystems
+6. Versioning and release process
+
+Start by creating the repository structure and implementing the reservation service proto as the first example, then expand to other services following the same pattern.

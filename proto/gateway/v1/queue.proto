@@ -1,0 +1,153 @@
+syntax = "proto3";
+
+package gateway.v1;
+
+option go_package = "github.com/traffic-tacos/proto-contracts/gen/go/gateway/v1;gatewayv1";
+option java_package = "com.traffic_tacos.gateway.v1";
+option java_multiple_files = true;
+option java_outer_classname = "QueueProto";
+
+import "proto/common/v1/types.proto";
+import "proto/common/v1/errors.proto";
+import "google/protobuf/timestamp.proto";
+
+// Queue service manages admission control and traffic shaping
+// Handles 30k RPS ingress and controls admission to prevent system overload
+service QueueService {
+  // Join the waiting queue for an event
+  rpc JoinQueue(JoinQueueRequest) returns (JoinQueueResponse);
+
+  // Check queue status and position
+  rpc GetQueueStatus(GetQueueStatusRequest) returns (GetQueueStatusResponse);
+
+  // Request admission from waiting queue to reservation system
+  rpc RequestAdmission(RequestAdmissionRequest) returns (RequestAdmissionResponse);
+
+  // Leave the queue voluntarily
+  rpc LeaveQueue(LeaveQueueRequest) returns (LeaveQueueResponse);
+
+  // Get queue statistics (for monitoring)
+  rpc GetQueueStats(GetQueueStatsRequest) returns (GetQueueStatsResponse);
+}
+
+// Join queue request
+message JoinQueueRequest {
+  string event_id = 1;
+  string user_id = 2;          // Optional: for authenticated users
+  string session_id = 3;       // For tracking anonymous users
+  QueueMetadata metadata = 4;  // Browser info, IP, etc.
+}
+
+// Join queue response
+message JoinQueueResponse {
+  string waiting_token = 1;
+  int32 position_hint = 2;     // Estimated position in queue
+  int32 eta_seconds = 3;       // Estimated wait time
+  QueueStatus status = 4;
+  google.protobuf.Timestamp expires_at = 5;
+  common.v1.Error error = 6;
+}
+
+// Get queue status request
+message GetQueueStatusRequest {
+  string waiting_token = 1;
+}
+
+// Get queue status response
+message GetQueueStatusResponse {
+  QueueStatus status = 1;
+  int32 position = 2;          // Current position
+  int32 eta_seconds = 3;       // Updated ETA
+  bool admission_ready = 4;    // Can request admission
+  google.protobuf.Timestamp expires_at = 5;
+  common.v1.Error error = 6;
+}
+
+// Request admission request
+message RequestAdmissionRequest {
+  string waiting_token = 1;
+  string event_id = 2;
+  string user_id = 3;          // Optional: for authenticated users
+}
+
+// Request admission response
+message RequestAdmissionResponse {
+  AdmissionStatus admission = 1;
+  string reservation_token = 2; // Token for making reservations
+  int32 ttl_seconds = 3;       // How long the admission is valid
+  google.protobuf.Timestamp valid_until = 4;
+  common.v1.Error error = 5;
+}
+
+// Leave queue request
+message LeaveQueueRequest {
+  string waiting_token = 1;
+  string reason = 2;           // user_cancelled, timeout, error
+}
+
+// Leave queue response
+message LeaveQueueResponse {
+  bool success = 1;
+  google.protobuf.Timestamp left_at = 2;
+  common.v1.Error error = 3;
+}
+
+// Get queue stats request
+message GetQueueStatsRequest {
+  string event_id = 1;         // Optional: filter by event
+}
+
+// Get queue stats response
+message GetQueueStatsResponse {
+  repeated EventQueueStats events = 1;
+  SystemQueueStats system = 2;
+  common.v1.Error error = 3;
+}
+
+// Queue metadata
+message QueueMetadata {
+  string ip_address = 1;
+  string user_agent = 2;
+  string referer = 3;
+  string country_code = 4;
+  map<string, string> headers = 5;
+}
+
+// Event-specific queue statistics
+message EventQueueStats {
+  string event_id = 1;
+  int32 total_waiting = 2;
+  int32 total_admitted = 3;
+  int32 admission_rate_per_minute = 4;
+  int32 average_wait_time_seconds = 5;
+  google.protobuf.Timestamp last_updated = 6;
+}
+
+// System-wide queue statistics
+message SystemQueueStats {
+  int32 total_active_queues = 1;
+  int32 total_waiting_users = 2;
+  int32 total_admitted_users = 3;
+  int32 system_capacity_percentage = 4;
+  float average_admission_rate = 5;
+  google.protobuf.Timestamp last_updated = 6;
+}
+
+// Queue status enumeration
+enum QueueStatus {
+  QUEUE_STATUS_UNSPECIFIED = 0;
+  QUEUE_STATUS_WAITING = 1;       // In queue, waiting for admission
+  QUEUE_STATUS_READY = 2;         // Ready for admission
+  QUEUE_STATUS_EXPIRED = 3;       // Queue token expired
+  QUEUE_STATUS_LEFT = 4;          // User left voluntarily
+  QUEUE_STATUS_ERROR = 5;         // System error
+}
+
+// Admission status enumeration
+enum AdmissionStatus {
+  ADMISSION_STATUS_UNSPECIFIED = 0;
+  ADMISSION_STATUS_GRANTED = 1;    // Admission granted
+  ADMISSION_STATUS_DENIED = 2;     // System at capacity
+  ADMISSION_STATUS_EXPIRED = 3;    // Waiting token expired
+  ADMISSION_STATUS_INVALID = 4;    // Invalid waiting token
+}

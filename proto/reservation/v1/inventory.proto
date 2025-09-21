@@ -1,0 +1,174 @@
+syntax = "proto3";
+
+package reservation.v1;
+
+option go_package = "github.com/traffic-tacos/proto-contracts/gen/go/reservation/v1;reservationv1";
+option java_package = "com.traffic_tacos.reservation.v1";
+option java_multiple_files = true;
+option java_outer_classname = "InventoryProto";
+
+import "proto/common/v1/types.proto";
+import "proto/common/v1/errors.proto";
+import "google/protobuf/timestamp.proto";
+
+// Inventory service manages seat availability and reservations
+// This service ensures zero overselling through DynamoDB conditional updates
+service Inventory {
+  // Check seat availability for the given event and seat selection
+  rpc CheckAvailability(CheckAvailabilityRequest) returns (CheckAvailabilityResponse);
+
+  // Reserve seats temporarily (60-second hold)
+  // This creates a temporary hold that expires automatically
+  rpc ReserveSeat(ReserveSeatRequest) returns (ReserveSeatResponse);
+
+  // Commit a reservation to permanent sale
+  // This converts a temporary hold to a confirmed sale
+  rpc CommitReservation(CommitReservationRequest) returns (CommitReservationResponse);
+
+  // Release a temporary hold
+  // This frees up seats that were temporarily reserved
+  rpc ReleaseHold(ReleaseHoldRequest) returns (ReleaseHoldResponse);
+
+  // Get current inventory status for an event
+  rpc GetInventoryStatus(GetInventoryStatusRequest) returns (GetInventoryStatusResponse);
+}
+
+// Check availability request
+message CheckAvailabilityRequest {
+  string event_id = 1;
+  repeated string seat_ids = 2;  // Optional: specific seats to check
+  int32 quantity = 3;            // Optional: number of any available seats
+  string section = 4;            // Optional: preferred section
+}
+
+// Check availability response
+message CheckAvailabilityResponse {
+  bool available = 1;
+  repeated common.v1.Seat available_seats = 2;
+  repeated string unavailable_seat_ids = 3;
+  int32 remaining_in_section = 4;
+  common.v1.Error error = 5;
+}
+
+// Reserve seat request
+message ReserveSeatRequest {
+  string reservation_id = 1;
+  string event_id = 2;
+  repeated string seat_ids = 3;
+  int32 quantity = 4;
+  string user_id = 5;
+  google.protobuf.Timestamp hold_expires_at = 6;
+  string idempotency_key = 7;
+}
+
+// Reserve seat response
+message ReserveSeatResponse {
+  string hold_id = 1;
+  repeated common.v1.Seat reserved_seats = 2;
+  google.protobuf.Timestamp hold_expires_at = 3;
+  HoldStatus status = 4;
+  common.v1.Error error = 5;
+}
+
+// Commit reservation request
+message CommitReservationRequest {
+  string reservation_id = 1;
+  string event_id = 2;
+  repeated string seat_ids = 3;
+  int32 quantity = 4;
+  string payment_intent_id = 5;
+  string user_id = 6;
+  string idempotency_key = 7;
+}
+
+// Commit reservation response
+message CommitReservationResponse {
+  string order_id = 1;
+  repeated common.v1.Seat sold_seats = 2;
+  CommitStatus status = 3;
+  google.protobuf.Timestamp committed_at = 4;
+  common.v1.Error error = 5;
+}
+
+// Release hold request
+message ReleaseHoldRequest {
+  string reservation_id = 1;
+  string event_id = 2;
+  repeated string seat_ids = 3;
+  int32 quantity = 4;
+  string reason = 5;  // EXPIRED, CANCELLED, FAILED_PAYMENT
+  string idempotency_key = 6;
+}
+
+// Release hold response
+message ReleaseHoldResponse {
+  repeated common.v1.Seat released_seats = 1;
+  ReleaseStatus status = 2;
+  google.protobuf.Timestamp released_at = 3;
+  common.v1.Error error = 4;
+}
+
+// Get inventory status request
+message GetInventoryStatusRequest {
+  string event_id = 1;
+  string section = 2;  // Optional: specific section
+}
+
+// Get inventory status response
+message GetInventoryStatusResponse {
+  common.v1.Event event = 1;
+  repeated SectionInventory sections = 2;
+  InventoryStats stats = 3;
+  common.v1.Error error = 4;
+}
+
+// Section inventory information
+message SectionInventory {
+  string section_id = 1;
+  string section_name = 2;
+  int32 total_seats = 3;
+  int32 available_seats = 4;
+  int32 reserved_seats = 5;
+  int32 sold_seats = 6;
+  int32 blocked_seats = 7;
+  common.v1.Money min_price = 8;
+  common.v1.Money max_price = 9;
+}
+
+// Overall inventory statistics
+message InventoryStats {
+  int32 total_seats = 1;
+  int32 available_seats = 2;
+  int32 reserved_seats = 3;
+  int32 sold_seats = 4;
+  int32 blocked_seats = 5;
+  float availability_percentage = 6;
+  google.protobuf.Timestamp last_updated = 7;
+}
+
+// Hold status enumeration
+enum HoldStatus {
+  HOLD_STATUS_UNSPECIFIED = 0;
+  HOLD_STATUS_ACTIVE = 1;
+  HOLD_STATUS_EXPIRED = 2;
+  HOLD_STATUS_RELEASED = 3;
+  HOLD_STATUS_COMMITTED = 4;
+}
+
+// Commit status enumeration
+enum CommitStatus {
+  COMMIT_STATUS_UNSPECIFIED = 0;
+  COMMIT_STATUS_SUCCESS = 1;
+  COMMIT_STATUS_FAILED_PAYMENT = 2;
+  COMMIT_STATUS_FAILED_EXPIRED = 3;
+  COMMIT_STATUS_FAILED_CONFLICT = 4;
+}
+
+// Release status enumeration
+enum ReleaseStatus {
+  RELEASE_STATUS_UNSPECIFIED = 0;
+  RELEASE_STATUS_SUCCESS = 1;
+  RELEASE_STATUS_ALREADY_RELEASED = 2;
+  RELEASE_STATUS_NOT_FOUND = 3;
+  RELEASE_STATUS_FAILED = 4;
+}

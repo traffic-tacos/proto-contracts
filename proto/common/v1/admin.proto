@@ -1,0 +1,246 @@
+syntax = "proto3";
+
+package common.v1;
+
+option go_package = "github.com/traffic-tacos/proto-contracts/gen/go/common/v1;commonv1";
+option java_package = "com.traffic_tacos.common.v1";
+option java_multiple_files = true;
+option java_outer_classname = "AdminProto";
+
+import "proto/common/v1/types.proto";
+import "proto/common/v1/errors.proto";
+import "google/protobuf/timestamp.proto";
+
+// Admin service for system management and monitoring
+// Provides operational capabilities across all services
+service AdminService {
+  // Get system health status
+  rpc GetSystemHealth(SystemHealthRequest) returns (SystemHealthResponse);
+
+  // Get service metrics
+  rpc GetMetrics(MetricsRequest) returns (MetricsResponse);
+
+  // Configure system settings
+  rpc UpdateConfig(UpdateConfigRequest) returns (UpdateConfigResponse);
+
+  // Trigger manual operations
+  rpc TriggerOperation(TriggerOperationRequest) returns (TriggerOperationResponse);
+
+  // Get system logs
+  rpc GetLogs(LogsRequest) returns (LogsResponse);
+
+  // Emergency operations
+  rpc EmergencyAction(EmergencyActionRequest) returns (EmergencyActionResponse);
+}
+
+// System health request
+message SystemHealthRequest {
+  repeated string services = 1;       // Optional: specific services to check
+  bool include_dependencies = 2;      // Include downstream dependencies
+}
+
+// System health response
+message SystemHealthResponse {
+  SystemHealthStatus overall_status = 1;
+  repeated ServiceHealthStatus services = 2;
+  repeated DependencyStatus dependencies = 3;
+  google.protobuf.Timestamp checked_at = 4;
+  Error error = 5;
+}
+
+// Service health status
+message ServiceHealthStatus {
+  string service_name = 1;
+  HealthStatus status = 2;
+  int32 response_time_ms = 3;
+  string version = 4;
+  int64 uptime_seconds = 5;
+  map<string, string> metrics = 6;
+  repeated string issues = 7;
+}
+
+// Dependency status
+message DependencyStatus {
+  string name = 1;                    // DynamoDB, SQS, EventBridge, etc.
+  HealthStatus status = 2;
+  string endpoint = 3;
+  int32 response_time_ms = 4;
+  google.protobuf.Timestamp last_check = 5;
+}
+
+// Metrics request
+message MetricsRequest {
+  string service = 1;                 // Optional: filter by service
+  string metric_type = 2;             // Optional: filter by metric type
+  google.protobuf.Timestamp start_time = 3;
+  google.protobuf.Timestamp end_time = 4;
+  string aggregation = 5;             // sum, avg, max, min
+}
+
+// Metrics response
+message MetricsResponse {
+  repeated MetricData metrics = 1;
+  google.protobuf.Timestamp collected_at = 2;
+  Error error = 3;
+}
+
+// Metric data
+message MetricData {
+  string name = 1;
+  string service = 2;
+  MetricType type = 3;
+  double value = 4;
+  string unit = 5;
+  map<string, string> labels = 6;
+  google.protobuf.Timestamp timestamp = 7;
+}
+
+// Update config request
+message UpdateConfigRequest {
+  string service = 1;
+  string config_key = 2;
+  string config_value = 3;
+  bool apply_immediately = 4;
+  string reason = 5;
+}
+
+// Update config response
+message UpdateConfigResponse {
+  bool updated = 1;
+  string old_value = 2;
+  string new_value = 3;
+  google.protobuf.Timestamp updated_at = 4;
+  Error error = 5;
+}
+
+// Trigger operation request
+message TriggerOperationRequest {
+  OperationType operation = 1;
+  string target_service = 2;
+  map<string, string> parameters = 3;
+  string reason = 4;
+  bool dry_run = 5;
+}
+
+// Trigger operation response
+message TriggerOperationResponse {
+  bool triggered = 1;
+  string operation_id = 2;
+  OperationStatus status = 3;
+  string result = 4;
+  google.protobuf.Timestamp triggered_at = 5;
+  Error error = 6;
+}
+
+// Logs request
+message LogsRequest {
+  string service = 1;                 // Optional: filter by service
+  LogLevel level = 2;                 // Optional: filter by level
+  google.protobuf.Timestamp start_time = 3;
+  google.protobuf.Timestamp end_time = 4;
+  int32 limit = 5;
+  string search_query = 6;
+}
+
+// Logs response
+message LogsResponse {
+  repeated LogEntry logs = 1;
+  bool has_more = 2;
+  string next_cursor = 3;
+  Error error = 4;
+}
+
+// Log entry
+message LogEntry {
+  google.protobuf.Timestamp timestamp = 1;
+  LogLevel level = 2;
+  string service = 3;
+  string message = 4;
+  string trace_id = 5;
+  map<string, string> fields = 6;
+}
+
+// Emergency action request
+message EmergencyActionRequest {
+  EmergencyActionType action = 1;
+  string reason = 2;
+  map<string, string> parameters = 3;
+  bool confirm = 4;                   // Required confirmation
+}
+
+// Emergency action response
+message EmergencyActionResponse {
+  bool executed = 1;
+  string action_id = 2;
+  string result = 3;
+  google.protobuf.Timestamp executed_at = 4;
+  Error error = 5;
+}
+
+// System health status enumeration
+enum SystemHealthStatus {
+  SYSTEM_HEALTH_STATUS_UNSPECIFIED = 0;
+  SYSTEM_HEALTH_STATUS_HEALTHY = 1;
+  SYSTEM_HEALTH_STATUS_DEGRADED = 2;
+  SYSTEM_HEALTH_STATUS_UNHEALTHY = 3;
+  SYSTEM_HEALTH_STATUS_CRITICAL = 4;
+}
+
+// Health status enumeration
+enum HealthStatus {
+  HEALTH_STATUS_UNSPECIFIED = 0;
+  HEALTH_STATUS_HEALTHY = 1;
+  HEALTH_STATUS_DEGRADED = 2;
+  HEALTH_STATUS_UNHEALTHY = 3;
+  HEALTH_STATUS_UNKNOWN = 4;
+}
+
+// Metric type enumeration
+enum MetricType {
+  METRIC_TYPE_UNSPECIFIED = 0;
+  METRIC_TYPE_COUNTER = 1;
+  METRIC_TYPE_GAUGE = 2;
+  METRIC_TYPE_HISTOGRAM = 3;
+  METRIC_TYPE_SUMMARY = 4;
+}
+
+// Operation type enumeration
+enum OperationType {
+  OPERATION_TYPE_UNSPECIFIED = 0;
+  OPERATION_TYPE_RESTART_SERVICE = 1;
+  OPERATION_TYPE_CLEAR_CACHE = 2;
+  OPERATION_TYPE_FORCE_SCALE = 3;
+  OPERATION_TYPE_DRAIN_QUEUE = 4;
+  OPERATION_TYPE_REFRESH_CONFIG = 5;
+}
+
+// Operation status enumeration
+enum OperationStatus {
+  OPERATION_STATUS_UNSPECIFIED = 0;
+  OPERATION_STATUS_PENDING = 1;
+  OPERATION_STATUS_RUNNING = 2;
+  OPERATION_STATUS_COMPLETED = 3;
+  OPERATION_STATUS_FAILED = 4;
+  OPERATION_STATUS_CANCELLED = 5;
+}
+
+// Log level enumeration
+enum LogLevel {
+  LOG_LEVEL_UNSPECIFIED = 0;
+  LOG_LEVEL_TRACE = 1;
+  LOG_LEVEL_DEBUG = 2;
+  LOG_LEVEL_INFO = 3;
+  LOG_LEVEL_WARN = 4;
+  LOG_LEVEL_ERROR = 5;
+  LOG_LEVEL_FATAL = 6;
+}
+
+// Emergency action type enumeration
+enum EmergencyActionType {
+  EMERGENCY_ACTION_TYPE_UNSPECIFIED = 0;
+  EMERGENCY_ACTION_TYPE_STOP_ADMISSIONS = 1;    // Stop new queue admissions
+  EMERGENCY_ACTION_TYPE_CANCEL_RESERVATIONS = 2; // Cancel all pending reservations
+  EMERGENCY_ACTION_TYPE_CIRCUIT_BREAKER = 3;    // Enable circuit breaker
+  EMERGENCY_ACTION_TYPE_MAINTENANCE_MODE = 4;   // Enter maintenance mode
+  EMERGENCY_ACTION_TYPE_FORCE_FAILOVER = 5;     // Force failover to backup
+}

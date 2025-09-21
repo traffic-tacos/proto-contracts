@@ -1,0 +1,43 @@
+version: v1
+plugins:
+  # Go generation for gateway-api, inventory-api, payment-sim-api, worker
+  - plugin: buf.build/protocolbuffers/go
+    out: gen/go
+    opt:
+      - paths=source_relative
+      - module=github.com/traffic-tacos/proto-contracts
+  - plugin: buf.build/grpc/go
+    out: gen/go
+    opt:
+      - paths=source_relative
+      - require_unimplemented_servers=false
+
+  # Java/Kotlin generation for reservation-api (Spring Boot)
+  - plugin: buf.build/protocolbuffers/java
+    out: gen/java
+    opt:
+      - Mproto/common/v1/types.proto=com.traffic_tacos.common.v1
+      - Mproto/common/v1/errors.proto=com.traffic_tacos.common.v1
+      - Mproto/common/v1/admin.proto=com.traffic_tacos.common.v1
+      - Mproto/gateway/v1/queue.proto=com.traffic_tacos.gateway.v1
+      - Mproto/gateway/v1/gateway.proto=com.traffic_tacos.gateway.v1
+      - Mproto/gateway/v1/websocket.proto=com.traffic_tacos.gateway.v1
+      - Mproto/gateway/v1/webhook.proto=com.traffic_tacos.gateway.v1
+      - Mproto/reservation/v1/reservation.proto=com.traffic_tacos.reservation.v1
+      - Mproto/reservation/v1/inventory.proto=com.traffic_tacos.reservation.v1
+      - Mproto/reservation/v1/worker.proto=com.traffic_tacos.reservation.v1
+      - Mproto/payment/v1/payment.proto=com.traffic_tacos.payment.v1
+  - plugin: buf.build/grpc/java
+    out: gen/java
+    opt:
+      - Mproto/common/v1/types.proto=com.traffic_tacos.common.v1
+      - Mproto/common/v1/errors.proto=com.traffic_tacos.common.v1
+      - Mproto/common/v1/admin.proto=com.traffic_tacos.common.v1
+      - Mproto/gateway/v1/queue.proto=com.traffic_tacos.gateway.v1
+      - Mproto/gateway/v1/gateway.proto=com.traffic_tacos.gateway.v1
+      - Mproto/gateway/v1/websocket.proto=com.traffic_tacos.gateway.v1
+      - Mproto/gateway/v1/webhook.proto=com.traffic_tacos.gateway.v1
+      - Mproto/reservation/v1/reservation.proto=com.traffic_tacos.reservation.v1
+      - Mproto/reservation/v1/inventory.proto=com.traffic_tacos.reservation.v1
+      - Mproto/reservation/v1/worker.proto=com.traffic_tacos.reservation.v1
+      - Mproto/payment/v1/payment.proto=com.traffic_tacos.payment.v1

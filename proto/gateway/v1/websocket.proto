@@ -1,0 +1,203 @@
+syntax = "proto3";
+
+package gateway.v1;
+
+option go_package = "github.com/traffic-tacos/proto-contracts/gen/go/gateway/v1;gatewayv1";
+option java_package = "com.traffic_tacos.gateway.v1";
+option java_multiple_files = true;
+option java_outer_classname = "WebSocketProto";
+
+import "proto/common/v1/types.proto";
+import "proto/common/v1/errors.proto";
+import "proto/reservation/v1/reservation.proto";
+import "proto/payment/v1/payment.proto";
+import "google/protobuf/timestamp.proto";
+
+// WebSocket service for real-time updates
+// Handles queue position updates, reservation status changes, payment updates
+service WebSocketService {
+  // Establish real-time connection for queue updates
+  rpc StreamQueueUpdates(StreamQueueRequest) returns (stream QueueUpdateEvent);
+
+  // Establish real-time connection for reservation updates
+  rpc StreamReservationUpdates(StreamReservationRequest) returns (stream ReservationUpdateEvent);
+
+  // Establish real-time connection for payment updates
+  rpc StreamPaymentUpdates(StreamPaymentRequest) returns (stream PaymentUpdateEvent);
+
+  // Send a message to a specific user/session
+  rpc SendMessage(SendMessageRequest) returns (SendMessageResponse);
+}
+
+// Stream queue updates request
+message StreamQueueRequest {
+  string waiting_token = 1;
+  string session_id = 2;
+  string event_id = 3;
+}
+
+// Queue update event
+message QueueUpdateEvent {
+  EventType type = 1;
+  QueueUpdate queue_update = 2;
+  SystemUpdate system_update = 3;
+  google.protobuf.Timestamp timestamp = 4;
+  string correlation_id = 5;
+}
+
+// Queue position and status update
+message QueueUpdate {
+  string waiting_token = 1;
+  int32 position = 2;
+  int32 eta_seconds = 3;
+  QueueEventType event_type = 4;
+  bool admission_ready = 5;
+  google.protobuf.Timestamp expires_at = 6;
+}
+
+// System-wide queue update
+message SystemUpdate {
+  string event_id = 1;
+  int32 total_waiting = 2;
+  int32 admission_rate = 3;
+  SystemEventType event_type = 4;
+  string message = 5;
+}
+
+// Stream reservation updates request
+message StreamReservationRequest {
+  string user_id = 1;
+  string session_id = 2;
+  repeated string reservation_ids = 3;  // Optional: filter specific reservations
+}
+
+// Reservation update event
+message ReservationUpdateEvent {
+  EventType type = 1;
+  ReservationUpdate reservation_update = 2;
+  google.protobuf.Timestamp timestamp = 3;
+  string correlation_id = 4;
+}
+
+// Reservation status update
+message ReservationUpdate {
+  string reservation_id = 1;
+  reservation.v1.ReservationStatus old_status = 2;
+  reservation.v1.ReservationStatus new_status = 3;
+  google.protobuf.Timestamp hold_expires_at = 4;
+  string message = 5;
+  ReservationEventType event_type = 6;
+}
+
+// Stream payment updates request
+message StreamPaymentRequest {
+  string user_id = 1;
+  string session_id = 2;
+  repeated string payment_intent_ids = 3;  // Optional: filter specific payments
+}
+
+// Payment update event
+message PaymentUpdateEvent {
+  EventType type = 1;
+  PaymentUpdate payment_update = 2;
+  google.protobuf.Timestamp timestamp = 3;
+  string correlation_id = 4;
+}
+
+// Payment status update
+message PaymentUpdate {
+  string payment_intent_id = 1;
+  payment.v1.PaymentStatus old_status = 2;
+  payment.v1.PaymentStatus new_status = 3;
+  string message = 4;
+  PaymentEventType event_type = 5;
+}
+
+// Send message request
+message SendMessageRequest {
+  string target_user_id = 1;
+  string target_session_id = 2;
+  MessageType message_type = 3;
+  string title = 4;
+  string content = 5;
+  map<string, string> data = 6;
+  MessagePriority priority = 7;
+}
+
+// Send message response
+message SendMessageResponse {
+  bool delivered = 1;
+  string message_id = 2;
+  google.protobuf.Timestamp sent_at = 3;
+  common.v1.Error error = 4;
+}
+
+// Event type enumeration
+enum EventType {
+  EVENT_TYPE_UNSPECIFIED = 0;
+  EVENT_TYPE_QUEUE_UPDATE = 1;
+  EVENT_TYPE_SYSTEM_UPDATE = 2;
+  EVENT_TYPE_RESERVATION_UPDATE = 3;
+  EVENT_TYPE_PAYMENT_UPDATE = 4;
+  EVENT_TYPE_MESSAGE = 5;
+  EVENT_TYPE_ERROR = 6;
+}
+
+// Queue event type enumeration
+enum QueueEventType {
+  QUEUE_EVENT_TYPE_UNSPECIFIED = 0;
+  QUEUE_EVENT_TYPE_POSITION_CHANGED = 1;
+  QUEUE_EVENT_TYPE_ADMISSION_READY = 2;
+  QUEUE_EVENT_TYPE_TOKEN_EXPIRED = 3;
+  QUEUE_EVENT_TYPE_QUEUE_PAUSED = 4;
+  QUEUE_EVENT_TYPE_QUEUE_RESUMED = 5;
+}
+
+// System event type enumeration
+enum SystemEventType {
+  SYSTEM_EVENT_TYPE_UNSPECIFIED = 0;
+  SYSTEM_EVENT_TYPE_CAPACITY_CHANGED = 1;
+  SYSTEM_EVENT_TYPE_MAINTENANCE_MODE = 2;
+  SYSTEM_EVENT_TYPE_EVENT_SOLD_OUT = 3;
+  SYSTEM_EVENT_TYPE_EVENT_CANCELLED = 4;
+  SYSTEM_EVENT_TYPE_ADMISSION_RATE_CHANGED = 5;
+}
+
+// Reservation event type enumeration
+enum ReservationEventType {
+  RESERVATION_EVENT_TYPE_UNSPECIFIED = 0;
+  RESERVATION_EVENT_TYPE_CREATED = 1;
+  RESERVATION_EVENT_TYPE_CONFIRMED = 2;
+  RESERVATION_EVENT_TYPE_CANCELLED = 3;
+  RESERVATION_EVENT_TYPE_EXPIRED = 4;
+  RESERVATION_EVENT_TYPE_EXPIRING_SOON = 5;  // Warning before expiry
+}
+
+// Payment event type enumeration
+enum PaymentEventType {
+  PAYMENT_EVENT_TYPE_UNSPECIFIED = 0;
+  PAYMENT_EVENT_TYPE_CREATED = 1;
+  PAYMENT_EVENT_TYPE_PROCESSING = 2;
+  PAYMENT_EVENT_TYPE_COMPLETED = 3;
+  PAYMENT_EVENT_TYPE_FAILED = 4;
+  PAYMENT_EVENT_TYPE_REFUNDED = 5;
+}
+
+// Message type enumeration
+enum MessageType {
+  MESSAGE_TYPE_UNSPECIFIED = 0;
+  MESSAGE_TYPE_INFO = 1;
+  MESSAGE_TYPE_WARNING = 2;
+  MESSAGE_TYPE_ERROR = 3;
+  MESSAGE_TYPE_SUCCESS = 4;
+  MESSAGE_TYPE_PROMOTION = 5;
+}
+
+// Message priority enumeration
+enum MessagePriority {
+  MESSAGE_PRIORITY_UNSPECIFIED = 0;
+  MESSAGE_PRIORITY_LOW = 1;
+  MESSAGE_PRIORITY_NORMAL = 2;
+  MESSAGE_PRIORITY_HIGH = 3;
+  MESSAGE_PRIORITY_URGENT = 4;
+}

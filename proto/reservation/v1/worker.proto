@@ -1,0 +1,220 @@
+syntax = "proto3";
+
+package reservation.v1;
+
+option go_package = "github.com/traffic-tacos/proto-contracts/gen/go/reservation/v1;reservationv1";
+option java_package = "com.traffic_tacos.reservation.v1";
+option java_multiple_files = true;
+option java_outer_classname = "WorkerProto";
+
+import "proto/common/v1/types.proto";
+import "proto/common/v1/errors.proto";
+import "google/protobuf/timestamp.proto";
+
+// Worker service for background event processing
+// Handles reservation expiry, payment result processing, and cleanup tasks
+// Runs as Kubernetes Job with KEDA auto-scaling based on SQS queue depth
+service WorkerService {
+  // Process reservation expiry events (60-second hold timeout)
+  rpc ProcessReservationExpiry(ProcessExpiryRequest) returns (ProcessExpiryResponse);
+
+  // Process payment result events (approved/failed)
+  rpc ProcessPaymentResult(ProcessPaymentRequest) returns (ProcessPaymentResponse);
+
+  // Process compensation/retry events for failed operations
+  rpc ProcessCompensation(ProcessCompensationRequest) returns (ProcessCompensationResponse);
+
+  // Health check for worker instances
+  rpc HealthCheck(WorkerHealthRequest) returns (WorkerHealthResponse);
+
+  // Get worker job status and metrics
+  rpc GetJobStatus(GetJobStatusRequest) returns (GetJobStatusResponse);
+}
+
+// Process expiry request
+message ProcessExpiryRequest {
+  string reservation_id = 1;
+  string event_id = 2;
+  repeated string seat_ids = 3;
+  int32 quantity = 4;
+  google.protobuf.Timestamp expired_at = 5;
+  string correlation_id = 6;
+  int32 retry_count = 7;
+}
+
+// Process expiry response
+message ProcessExpiryResponse {
+  ProcessingStatus status = 1;
+  repeated common.v1.Seat released_seats = 2;
+  google.protobuf.Timestamp processed_at = 3;
+  string next_action = 4;  // "completed", "retry", "dlq"
+  common.v1.Error error = 5;
+}
+
+// Process payment request
+message ProcessPaymentRequest {
+  string reservation_id = 1;
+  string payment_intent_id = 2;
+  PaymentResultType result_type = 3;
+  PaymentEventData event_data = 4;
+  string correlation_id = 5;
+  int32 retry_count = 6;
+}
+
+// Process payment response
+message ProcessPaymentResponse {
+  ProcessingStatus status = 1;
+  string order_id = 2;                   // Set if payment approved and committed
+  repeated common.v1.Seat affected_seats = 3;
+  google.protobuf.Timestamp processed_at = 4;
+  string next_action = 5;
+  common.v1.Error error = 6;
+}
+
+// Process compensation request
+message ProcessCompensationRequest {
+  string reservation_id = 1;
+  CompensationType compensation_type = 2;
+  string original_operation = 3;
+  string failure_reason = 4;
+  map<string, string> context = 5;
+  string correlation_id = 6;
+  int32 retry_count = 7;
+}
+
+// Process compensation response
+message ProcessCompensationResponse {
+  ProcessingStatus status = 1;
+  repeated CompensationAction actions_taken = 2;
+  google.protobuf.Timestamp processed_at = 3;
+  bool requires_manual_intervention = 4;
+  common.v1.Error error = 5;
+}
+
+// Worker health request
+message WorkerHealthRequest {
+  string worker_instance_id = 1;
+}
+
+// Worker health response
+message WorkerHealthResponse {
+  WorkerStatus status = 1;
+  int32 processed_events_count = 2;
+  int32 failed_events_count = 3;
+  google.protobuf.Timestamp last_processed_at = 4;
+  int32 queue_depth = 5;
+  google.protobuf.Timestamp started_at = 6;
+  common.v1.Error error = 7;
+}
+
+// Get job status request
+message GetJobStatusRequest {
+  string job_id = 1;              // Optional: specific job instance
+  string event_type = 2;          // Optional: filter by event type
+}
+
+// Get job status response
+message GetJobStatusResponse {
+  repeated JobInstance jobs = 1;
+  JobMetrics metrics = 2;
+  common.v1.Error error = 3;
+}
+
+// Payment event data from webhook
+message PaymentEventData {
+  string payment_intent_id = 1;
+  string transaction_id = 2;
+  common.v1.Money amount = 3;
+  google.protobuf.Timestamp processed_at = 4;
+  string gateway_response = 5;
+  map<string, string> metadata = 6;
+}
+
+// Compensation action taken
+message CompensationAction {
+  CompensationActionType action_type = 1;
+  string target_service = 2;
+  string action_description = 3;
+  bool success = 4;
+  google.protobuf.Timestamp executed_at = 5;
+}
+
+// Job instance information
+message JobInstance {
+  string job_id = 1;
+  string worker_id = 2;
+  JobInstanceStatus status = 3;
+  google.protobuf.Timestamp started_at = 4;
+  google.protobuf.Timestamp completed_at = 5;
+  int32 events_processed = 6;
+  int32 events_failed = 7;
+}
+
+// Job metrics
+message JobMetrics {
+  int32 total_active_jobs = 1;
+  int32 total_events_pending = 2;
+  int32 total_events_processing = 3;
+  int32 total_events_completed = 4;
+  int32 total_events_failed = 5;
+  float average_processing_time_ms = 6;
+  google.protobuf.Timestamp last_updated = 7;
+}
+
+// Processing status enumeration
+enum ProcessingStatus {
+  PROCESSING_STATUS_UNSPECIFIED = 0;
+  PROCESSING_STATUS_SUCCESS = 1;
+  PROCESSING_STATUS_FAILED = 2;
+  PROCESSING_STATUS_RETRY = 3;
+  PROCESSING_STATUS_SKIPPED = 4;
+  PROCESSING_STATUS_DLQ = 5;           // Sent to dead letter queue
+}
+
+// Payment result type enumeration
+enum PaymentResultType {
+  PAYMENT_RESULT_TYPE_UNSPECIFIED = 0;
+  PAYMENT_RESULT_TYPE_APPROVED = 1;
+  PAYMENT_RESULT_TYPE_FAILED = 2;
+  PAYMENT_RESULT_TYPE_CANCELLED = 3;
+  PAYMENT_RESULT_TYPE_REFUNDED = 4;
+  PAYMENT_RESULT_TYPE_TIMEOUT = 5;
+}
+
+// Compensation type enumeration
+enum CompensationType {
+  COMPENSATION_TYPE_UNSPECIFIED = 0;
+  COMPENSATION_TYPE_RELEASE_SEATS = 1;      // Release held seats
+  COMPENSATION_TYPE_REFUND_PAYMENT = 2;     // Refund completed payment
+  COMPENSATION_TYPE_CANCEL_RESERVATION = 3; // Cancel stuck reservation
+  COMPENSATION_TYPE_CLEANUP_ORPHANED = 4;   // Clean up orphaned records
+}
+
+// Worker status enumeration
+enum WorkerStatus {
+  WORKER_STATUS_UNSPECIFIED = 0;
+  WORKER_STATUS_HEALTHY = 1;
+  WORKER_STATUS_DEGRADED = 2;
+  WORKER_STATUS_UNHEALTHY = 3;
+  WORKER_STATUS_TERMINATED = 4;
+}
+
+// Compensation action type enumeration
+enum CompensationActionType {
+  COMPENSATION_ACTION_TYPE_UNSPECIFIED = 0;
+  COMPENSATION_ACTION_TYPE_INVENTORY_RELEASE = 1;
+  COMPENSATION_ACTION_TYPE_PAYMENT_REFUND = 2;
+  COMPENSATION_ACTION_TYPE_RESERVATION_CANCEL = 3;
+  COMPENSATION_ACTION_TYPE_EVENT_REPUBLISH = 4;
+  COMPENSATION_ACTION_TYPE_MANUAL_REVIEW = 5;
+}
+
+// Job instance status enumeration
+enum JobInstanceStatus {
+  JOB_INSTANCE_STATUS_UNSPECIFIED = 0;
+  JOB_INSTANCE_STATUS_PENDING = 1;
+  JOB_INSTANCE_STATUS_RUNNING = 2;
+  JOB_INSTANCE_STATUS_COMPLETED = 3;
+  JOB_INSTANCE_STATUS_FAILED = 4;
+  JOB_INSTANCE_STATUS_TERMINATED = 5;
+}

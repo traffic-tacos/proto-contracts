@@ -1,0 +1,218 @@
+syntax = "proto3";
+
+package gateway.v1;
+
+option go_package = "github.com/traffic-tacos/proto-contracts/gen/go/gateway/v1;gatewayv1";
+option java_package = "com.traffic_tacos.gateway.v1";
+option java_multiple_files = true;
+option java_outer_classname = "GatewayProto";
+
+import "proto/common/v1/types.proto";
+import "proto/common/v1/errors.proto";
+import "proto/reservation/v1/reservation.proto";
+import "proto/reservation/v1/inventory.proto";
+import "proto/payment/v1/payment.proto";
+import "google/protobuf/timestamp.proto";
+
+// Gateway service acts as BFF (Backend for Frontend)
+// Handles authentication, rate limiting, and service orchestration
+service GatewayService {
+  // Health check
+  rpc HealthCheck(HealthCheckRequest) returns (HealthCheckResponse);
+
+  // Authentication and authorization
+  rpc ValidateToken(ValidateTokenRequest) returns (ValidateTokenResponse);
+
+  // Event and inventory queries
+  rpc GetEventAvailability(GetEventAvailabilityRequest) returns (GetEventAvailabilityResponse);
+
+  // Reservation orchestration
+  rpc CreateReservation(CreateReservationRequest) returns (CreateReservationResponse);
+  rpc GetReservation(GetReservationRequest) returns (GetReservationResponse);
+  rpc ConfirmReservation(ConfirmReservationRequest) returns (ConfirmReservationResponse);
+  rpc CancelReservation(CancelReservationRequest) returns (CancelReservationResponse);
+
+  // Payment orchestration
+  rpc CreatePaymentIntent(CreatePaymentIntentRequest) returns (CreatePaymentIntentResponse);
+  rpc GetPaymentStatus(GetPaymentStatusRequest) returns (GetPaymentStatusResponse);
+}
+
+// Health check request
+message HealthCheckRequest {
+  string service = 1;  // Optional: check specific downstream service
+}
+
+// Health check response
+message HealthCheckResponse {
+  HealthStatus status = 1;
+  map<string, ServiceHealth> services = 2;
+  google.protobuf.Timestamp timestamp = 3;
+  common.v1.Error error = 4;
+}
+
+// Service health information
+message ServiceHealth {
+  HealthStatus status = 1;
+  int32 response_time_ms = 2;
+  string version = 3;
+  google.protobuf.Timestamp last_check = 4;
+}
+
+// Validate token request
+message ValidateTokenRequest {
+  string token = 1;              // JWT token
+  string required_scope = 2;     // Optional: required permission scope
+}
+
+// Validate token response
+message ValidateTokenResponse {
+  bool valid = 1;
+  UserContext user = 2;
+  repeated string scopes = 3;
+  google.protobuf.Timestamp expires_at = 4;
+  common.v1.Error error = 5;
+}
+
+// User context from validated token
+message UserContext {
+  string user_id = 1;
+  string username = 2;
+  string email = 3;
+  repeated string roles = 4;
+  map<string, string> attributes = 5;
+}
+
+// Get event availability request
+message GetEventAvailabilityRequest {
+  string event_id = 1;
+  string section = 2;            // Optional: filter by section
+  int32 quantity = 3;            // Optional: check for specific quantity
+}
+
+// Get event availability response
+message GetEventAvailabilityResponse {
+  common.v1.Event event = 1;
+  repeated reservation.v1.SectionInventory sections = 2;
+  int32 total_available = 3;
+  common.v1.Error error = 4;
+}
+
+// Create reservation request (proxied to reservation service)
+message CreateReservationRequest {
+  string event_id = 1;
+  repeated string seat_ids = 2;
+  int32 quantity = 3;
+  string user_id = 4;
+  string reservation_token = 5;  // From queue admission
+  string idempotency_key = 6;
+  RequestMetadata metadata = 7;
+}
+
+// Create reservation response
+message CreateReservationResponse {
+  string reservation_id = 1;
+  reservation.v1.ReservationStatus status = 2;
+  google.protobuf.Timestamp hold_expires_at = 3;
+  repeated common.v1.Seat reserved_seats = 4;
+  common.v1.Money total_amount = 5;
+  string payment_url = 6;
+  common.v1.Error error = 7;
+}
+
+// Get reservation request
+message GetReservationRequest {
+  string reservation_id = 1;
+  string user_id = 2;
+}
+
+// Get reservation response
+message GetReservationResponse {
+  reservation.v1.Reservation reservation = 1;
+  common.v1.Error error = 2;
+}
+
+// Confirm reservation request
+message ConfirmReservationRequest {
+  string reservation_id = 1;
+  string payment_intent_id = 2;
+  string user_id = 3;
+  string idempotency_key = 4;
+}
+
+// Confirm reservation response
+message ConfirmReservationResponse {
+  string order_id = 1;
+  reservation.v1.ReservationStatus status = 2;
+  google.protobuf.Timestamp confirmed_at = 3;
+  repeated common.v1.Seat confirmed_seats = 4;
+  common.v1.Error error = 5;
+}
+
+// Cancel reservation request
+message CancelReservationRequest {
+  string reservation_id = 1;
+  string user_id = 2;
+  string reason = 3;
+  string idempotency_key = 4;
+}
+
+// Cancel reservation response
+message CancelReservationResponse {
+  reservation.v1.ReservationStatus status = 1;
+  google.protobuf.Timestamp cancelled_at = 2;
+  repeated common.v1.Seat released_seats = 3;
+  common.v1.Error error = 4;
+}
+
+// Create payment intent request
+message CreatePaymentIntentRequest {
+  string reservation_id = 1;
+  common.v1.Money amount = 2;
+  string user_id = 3;
+  payment.v1.PaymentMethod method = 4;
+  payment.v1.PaymentScenario scenario = 5;  // For simulation
+  string webhook_url = 6;
+  string idempotency_key = 7;
+}
+
+// Create payment intent response
+message CreatePaymentIntentResponse {
+  string payment_intent_id = 1;
+  payment.v1.PaymentStatus status = 2;
+  string client_secret = 3;
+  string payment_url = 4;
+  google.protobuf.Timestamp expires_at = 5;
+  common.v1.Error error = 6;
+}
+
+// Get payment status request
+message GetPaymentStatusRequest {
+  string payment_intent_id = 1;
+  string user_id = 2;
+}
+
+// Get payment status response
+message GetPaymentStatusResponse {
+  payment.v1.Payment payment = 1;
+  common.v1.Error error = 2;
+}
+
+// Request metadata for tracking
+message RequestMetadata {
+  string request_id = 1;
+  string trace_id = 2;
+  string user_agent = 3;
+  string ip_address = 4;
+  string session_id = 5;
+  google.protobuf.Timestamp timestamp = 6;
+  map<string, string> headers = 7;
+}
+
+// Health status enumeration
+enum HealthStatus {
+  HEALTH_STATUS_UNSPECIFIED = 0;
+  HEALTH_STATUS_HEALTHY = 1;
+  HEALTH_STATUS_DEGRADED = 2;
+  HEALTH_STATUS_UNHEALTHY = 3;
+  HEALTH_STATUS_UNKNOWN = 4;
+}

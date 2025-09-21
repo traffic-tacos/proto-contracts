@@ -1,0 +1,288 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+env:
+  GO_VERSION: '1.22'
+  JAVA_VERSION: '17'
+
+jobs:
+  # Validate the release
+  validate:
+    name: Validate Release
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      clean_version: ${{ steps.version.outputs.clean_version }}
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Extract version
+      id: version
+      run: |
+        VERSION=${GITHUB_REF#refs/tags/}
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        CLEAN_VERSION=${VERSION#v}
+        echo "clean_version=$CLEAN_VERSION" >> $GITHUB_OUTPUT
+        echo "Release version: $VERSION"
+
+    - name: Setup Buf
+      uses: bufbuild/buf-setup-action@v1
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Validate proto files
+      run: |
+        buf lint
+        buf format --diff --exit-code
+
+    - name: Check changelog
+      run: |
+        if [ ! -f CHANGELOG.md ]; then
+          echo "⚠️  CHANGELOG.md not found, generating release notes from commits"
+        fi
+
+  # Build and test all artifacts
+  build:
+    name: Build Release Artifacts
+    runs-on: ubuntu-latest
+    needs: validate
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Setup Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: ${{ env.GO_VERSION }}
+
+    - name: Setup Java
+      uses: actions/setup-java@v4
+      with:
+        java-version: ${{ env.JAVA_VERSION }}
+        distribution: 'temurin'
+
+    - name: Setup Buf
+      uses: bufbuild/buf-setup-action@v1
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Install Go protoc plugins
+      run: |
+        go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+        go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
+
+    - name: Update version in build.gradle.kts
+      run: |
+        sed -i 's/version = ".*"/version = "${{ needs.validate.outputs.clean_version }}"/' build.gradle.kts
+
+    - name: Generate all code
+      run: make generate
+
+    - name: Run full test suite
+      run: make test
+
+    - name: Build JAR artifact
+      run: ./gradlew build
+
+    - name: Upload Go generated code
+      uses: actions/upload-artifact@v3
+      with:
+        name: generated-go-${{ needs.validate.outputs.version }}
+        path: gen/go/
+
+    - name: Upload Java/Kotlin generated code
+      uses: actions/upload-artifact@v3
+      with:
+        name: generated-java-${{ needs.validate.outputs.version }}
+        path: gen/java/
+
+    - name: Upload JAR artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: proto-contracts-${{ needs.validate.outputs.clean_version }}.jar
+        path: build/libs/*.jar
+
+  # Publish Go module (automatic via git tags)
+  publish-go:
+    name: Publish Go Module
+    runs-on: ubuntu-latest
+    needs: [validate, build]
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Setup Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: ${{ env.GO_VERSION }}
+
+    - name: Validate Go module
+      run: |
+        go mod verify
+        go mod tidy
+
+        # Ensure no changes after tidy
+        if [ -n "$(git status --porcelain go.mod go.sum)" ]; then
+          echo "❌ go.mod or go.sum is not tidy"
+          git diff go.mod go.sum
+          exit 1
+        fi
+
+    - name: Test Go module accessibility
+      run: |
+        # Test that the module can be fetched
+        go list -m github.com/traffic-tacos/proto-contracts@${{ needs.validate.outputs.version }} || \
+        echo "Module will be available after tag is pushed"
+
+  # Publish Java/Kotlin artifact
+  publish-kotlin:
+    name: Publish Kotlin/Java Artifact
+    runs-on: ubuntu-latest
+    needs: [validate, build]
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Setup Java
+      uses: actions/setup-java@v4
+      with:
+        java-version: ${{ env.JAVA_VERSION }}
+        distribution: 'temurin'
+
+    - name: Download JAR artifact
+      uses: actions/download-artifact@v3
+      with:
+        name: proto-contracts-${{ needs.validate.outputs.clean_version }}.jar
+        path: build/libs/
+
+    - name: Update version in build.gradle.kts
+      run: |
+        sed -i 's/version = ".*"/version = "${{ needs.validate.outputs.clean_version }}"/' build.gradle.kts
+
+    - name: Publish to Maven Local (simulation)
+      run: ./gradlew publishToMavenLocal
+
+    # For actual publishing, configure your Maven repository
+    # - name: Publish to Maven Central
+    #   env:
+    #     MAVEN_USERNAME: ${{ secrets.MAVEN_USERNAME }}
+    #     MAVEN_PASSWORD: ${{ secrets.MAVEN_PASSWORD }}
+    #     SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
+    #     SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
+    #   run: ./gradlew publish
+
+  # Create GitHub release
+  create-release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    needs: [validate, build, publish-go, publish-kotlin]
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Download all artifacts
+      uses: actions/download-artifact@v3
+
+    - name: Generate release notes
+      id: release-notes
+      run: |
+        # Generate release notes from commits since last tag
+        LAST_TAG=$(git describe --tags --abbrev=0 ${{ needs.validate.outputs.version }}~1 2>/dev/null || echo "")
+
+        if [ -n "$LAST_TAG" ]; then
+          COMMITS=$(git log --oneline $LAST_TAG..${{ needs.validate.outputs.version }})
+        else
+          COMMITS=$(git log --oneline)
+        fi
+
+        cat > release_notes.md << EOF
+        # Release ${{ needs.validate.outputs.version }}
+
+        ## 🚀 What's New
+
+        $COMMITS
+
+        ## 📦 Installation
+
+        ### Go
+        \`\`\`bash
+        go get github.com/traffic-tacos/proto-contracts@${{ needs.validate.outputs.version }}
+        \`\`\`
+
+        ### Kotlin/Java
+        \`\`\`kotlin
+        dependencies {
+            implementation("com.traffic-tacos:proto-contracts:${{ needs.validate.outputs.clean_version }}")
+        }
+        \`\`\`
+
+        ## 🔧 Services Included
+
+        $(grep -h "^service " proto/*/v1/*.proto | sed 's/service \([^ ]*\).*/- \1 Service/' | sort | uniq)
+
+        ## 📊 Generated Artifacts
+
+        - **Go packages**: Available via Go modules
+        - **Java/Kotlin packages**: Available via Maven artifact
+        - **Total proto files**: $(find proto -name "*.proto" | wc -l)
+
+        ## 🔗 Related Repositories
+
+        - [gateway-api](https://github.com/traffic-tacos/gateway-api)
+        - [reservation-api](https://github.com/traffic-tacos/reservation-api)
+        - [inventory-api](https://github.com/traffic-tacos/inventory-api)
+        - [payment-sim-api](https://github.com/traffic-tacos/payment-sim-api)
+        - [reservation-worker](https://github.com/traffic-tacos/reservation-worker)
+        EOF
+
+    - name: Create Release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ needs.validate.outputs.version }}
+        release_name: Proto Contracts ${{ needs.validate.outputs.version }}
+        body_path: release_notes.md
+        draft: false
+        prerelease: ${{ contains(needs.validate.outputs.version, '-') }}
+
+    - name: Upload Release Assets
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: proto-contracts-${{ needs.validate.outputs.clean_version }}.jar
+        asset_name: proto-contracts-${{ needs.validate.outputs.clean_version }}.jar
+        asset_content_type: application/java-archive
+
+  # Update dependent repositories
+  notify-dependents:
+    name: Notify Dependent Repositories
+    runs-on: ubuntu-latest
+    needs: [validate, create-release]
+    if: always() && needs.create-release.result == 'success'
+    strategy:
+      matrix:
+        repo: ['gateway-api', 'reservation-api', 'inventory-api', 'payment-sim-api', 'reservation-worker']
+    steps:
+    - name: Repository Dispatch
+      uses: peter-evans/repository-dispatch@v2
+      with:
+        token: ${{ secrets.REPO_ACCESS_TOKEN }}
+        repository: traffic-tacos/${{ matrix.repo }}
+        event-type: proto-contracts-updated
+        client-payload: |
+          {
+            "version": "${{ needs.validate.outputs.version }}",
+            "clean_version": "${{ needs.validate.outputs.clean_version }}"
+          }

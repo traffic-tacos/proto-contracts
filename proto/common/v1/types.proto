@@ -1,0 +1,85 @@
+syntax = "proto3";
+
+package common.v1;
+
+option go_package = "github.com/traffic-tacos/proto-contracts/gen/go/common/v1;commonv1";
+option java_package = "com.traffic_tacos.common.v1";
+option java_multiple_files = true;
+option java_outer_classname = "CommonTypesProto";
+
+import "google/protobuf/timestamp.proto";
+
+// Money represents a monetary amount with currency
+message Money {
+  // Amount in the smallest currency unit (e.g., cents for USD, won for KRW)
+  int64 amount = 1;
+
+  // Currency code (ISO 4217)
+  string currency = 2;
+}
+
+// Address represents a physical address
+message Address {
+  string street = 1;
+  string city = 2;
+  string state = 3;
+  string postal_code = 4;
+  string country = 5;
+}
+
+// Pagination for list requests
+message Pagination {
+  int32 page = 1;
+  int32 page_size = 2;
+  string cursor = 3;
+}
+
+// Page info for list responses
+message PageInfo {
+  int32 total_count = 1;
+  bool has_next_page = 2;
+  bool has_previous_page = 3;
+  string next_cursor = 4;
+  string previous_cursor = 5;
+}
+
+// Venue information
+message Venue {
+  string id = 1;
+  string name = 2;
+  Address address = 3;
+  int32 total_capacity = 4;
+}
+
+// Event information
+message Event {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+  Venue venue = 4;
+  google.protobuf.Timestamp start_time = 5;
+  google.protobuf.Timestamp end_time = 6;
+  google.protobuf.Timestamp sale_start_time = 7;
+  google.protobuf.Timestamp sale_end_time = 8;
+  int32 total_seats = 9;
+  int32 remaining_seats = 10;
+}
+
+// Seat information
+message Seat {
+  string id = 1;
+  string section = 2;
+  string row = 3;
+  string number = 4;
+  Money price = 5;
+  SeatStatus status = 6;
+}
+
+// Seat status enumeration
+enum SeatStatus {
+  SEAT_STATUS_UNSPECIFIED = 0;
+  SEAT_STATUS_AVAILABLE = 1;
+  SEAT_STATUS_RESERVED = 2;
+  SEAT_STATUS_SOLD = 3;
+  SEAT_STATUS_BLOCKED = 4;
+}
