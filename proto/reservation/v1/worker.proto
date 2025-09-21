@@ -2,14 +2,14 @@ syntax = "proto3";
 
 package reservation.v1;
 
+import "google/protobuf/timestamp.proto";
+import "proto/common/v1/errors.proto";
+import "proto/common/v1/types.proto";
+
 option go_package = "github.com/traffic-tacos/proto-contracts/gen/go/reservation/v1;reservationv1";
-option java_package = "com.traffic_tacos.reservation.v1";
 option java_multiple_files = true;
 option java_outer_classname = "WorkerProto";
-
-import "proto/common/v1/types.proto";
-import "proto/common/v1/errors.proto";
-import "google/protobuf/timestamp.proto";
+option java_package = "com.traffic_tacos.reservation.v1";
 
 // Worker service for background event processing
 // Handles reservation expiry, payment result processing, and cleanup tasks
@@ -47,7 +47,7 @@ message ProcessReservationExpiryResponse {
   ProcessingStatus status = 1;
   repeated common.v1.Seat released_seats = 2;
   google.protobuf.Timestamp processed_at = 3;
-  string next_action = 4;  // "completed", "retry", "dlq"
+  string next_action = 4; // "completed", "retry", "dlq"
   common.v1.Error error = 5;
 }
 
@@ -64,7 +64,7 @@ message ProcessPaymentResultRequest {
 // Process payment response
 message ProcessPaymentResultResponse {
   ProcessingStatus status = 1;
-  string order_id = 2;                   // Set if payment approved and committed
+  string order_id = 2; // Set if payment approved and committed
   repeated common.v1.Seat affected_seats = 3;
   google.protobuf.Timestamp processed_at = 4;
   string next_action = 5;
@@ -109,8 +109,8 @@ message HealthCheckResponse {
 
 // Get job status request
 message GetJobStatusRequest {
-  string job_id = 1;              // Optional: specific job instance
-  string event_type = 2;          // Optional: filter by event type
+  string job_id = 1; // Optional: specific job instance
+  string event_type = 2; // Optional: filter by event type
 }
 
 // Get job status response
@@ -168,7 +168,7 @@ enum ProcessingStatus {
   PROCESSING_STATUS_FAILED = 2;
   PROCESSING_STATUS_RETRY = 3;
   PROCESSING_STATUS_SKIPPED = 4;
-  PROCESSING_STATUS_DLQ = 5;           // Sent to dead letter queue
+  PROCESSING_STATUS_DLQ = 5; // Sent to dead letter queue
 }
 
 // Payment result type enumeration
@@ -184,10 +184,10 @@ enum PaymentResultType {
 // Compensation type enumeration
 enum CompensationType {
   COMPENSATION_TYPE_UNSPECIFIED = 0;
-  COMPENSATION_TYPE_RELEASE_SEATS = 1;      // Release held seats
-  COMPENSATION_TYPE_REFUND_PAYMENT = 2;     // Refund completed payment
+  COMPENSATION_TYPE_RELEASE_SEATS = 1; // Release held seats
+  COMPENSATION_TYPE_REFUND_PAYMENT = 2; // Refund completed payment
   COMPENSATION_TYPE_CANCEL_RESERVATION = 3; // Cancel stuck reservation
-  COMPENSATION_TYPE_CLEANUP_ORPHANED = 4;   // Clean up orphaned records
+  COMPENSATION_TYPE_CLEANUP_ORPHANED = 4; // Clean up orphaned records
 }
 
 // Worker status enumeration

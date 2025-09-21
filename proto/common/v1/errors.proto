@@ -3,9 +3,9 @@ syntax = "proto3";
 package common.v1;
 
 option go_package = "github.com/traffic-tacos/proto-contracts/gen/go/common/v1;commonv1";
-option java_package = "com.traffic_tacos.common.v1";
 option java_multiple_files = true;
 option java_outer_classname = "ErrorsProto";
+option java_package = "com.traffic_tacos.common.v1";
 
 // Standard error response
 message Error {

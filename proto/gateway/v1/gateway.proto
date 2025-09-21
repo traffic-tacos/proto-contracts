@@ -2,17 +2,17 @@ syntax = "proto3";
 
 package gateway.v1;
 
+import "google/protobuf/timestamp.proto";
+import "proto/common/v1/errors.proto";
+import "proto/common/v1/types.proto";
+import "proto/payment/v1/payment.proto";
+import "proto/reservation/v1/inventory.proto";
+import "proto/reservation/v1/reservation.proto";
+
 option go_package = "github.com/traffic-tacos/proto-contracts/gen/go/gateway/v1;gatewayv1";
-option java_package = "com.traffic_tacos.gateway.v1";
 option java_multiple_files = true;
 option java_outer_classname = "GatewayProto";
-
-import "proto/common/v1/types.proto";
-import "proto/common/v1/errors.proto";
-import "proto/reservation/v1/reservation.proto";
-import "proto/reservation/v1/inventory.proto";
-import "proto/payment/v1/payment.proto";
-import "google/protobuf/timestamp.proto";
+option java_package = "com.traffic_tacos.gateway.v1";
 
 // Gateway service acts as BFF (Backend for Frontend)
 // Handles authentication, rate limiting, and service orchestration
@@ -39,7 +39,7 @@ service GatewayService {
 
 // Health check request
 message HealthCheckRequest {
-  string service = 1;  // Optional: check specific downstream service
+  string service = 1; // Optional: check specific downstream service
 }
 
 // Health check response
@@ -60,8 +60,8 @@ message ServiceHealth {
 
 // Validate token request
 message ValidateTokenRequest {
-  string token = 1;              // JWT token
-  string required_scope = 2;     // Optional: required permission scope
+  string token = 1; // JWT token
+  string required_scope = 2; // Optional: required permission scope
 }
 
 // Validate token response
@@ -85,8 +85,8 @@ message UserContext {
 // Get event availability request
 message GetEventAvailabilityRequest {
   string event_id = 1;
-  string section = 2;            // Optional: filter by section
-  int32 quantity = 3;            // Optional: check for specific quantity
+  string section = 2; // Optional: filter by section
+  int32 quantity = 3; // Optional: check for specific quantity
 }
 
 // Get event availability response
@@ -103,7 +103,7 @@ message CreateReservationRequest {
   repeated string seat_ids = 2;
   int32 quantity = 3;
   string user_id = 4;
-  string reservation_token = 5;  // From queue admission
+  string reservation_token = 5; // From queue admission
   string idempotency_key = 6;
   RequestMetadata metadata = 7;
 }
@@ -170,7 +170,7 @@ message CreatePaymentIntentRequest {
   common.v1.Money amount = 2;
   string user_id = 3;
   payment.v1.PaymentMethod method = 4;
-  payment.v1.PaymentScenario scenario = 5;  // For simulation
+  payment.v1.PaymentScenario scenario = 5; // For simulation
   string webhook_url = 6;
   string idempotency_key = 7;
 }

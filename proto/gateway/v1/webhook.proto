@@ -2,14 +2,14 @@ syntax = "proto3";
 
 package gateway.v1;
 
+import "google/protobuf/timestamp.proto";
+import "proto/common/v1/errors.proto";
+import "proto/common/v1/types.proto";
+
 option go_package = "github.com/traffic-tacos/proto-contracts/gen/go/gateway/v1;gatewayv1";
-option java_package = "com.traffic_tacos.gateway.v1";
 option java_multiple_files = true;
 option java_outer_classname = "WebhookProto";
-
-import "proto/common/v1/types.proto";
-import "proto/common/v1/errors.proto";
-import "google/protobuf/timestamp.proto";
+option java_package = "com.traffic_tacos.gateway.v1";
 
 // Webhook service for receiving external events
 // Primarily handles payment webhooks from payment-sim-api
@@ -33,9 +33,9 @@ message ReceivePaymentWebhookRequest {
   PaymentWebhookType event_type = 2;
   PaymentWebhookData data = 3;
   google.protobuf.Timestamp timestamp = 4;
-  string signature = 5;               // HMAC signature for verification
-  string source = 6;                  // payment-sim-api, stripe, etc.
-  int32 attempt = 7;                  // Retry attempt number
+  string signature = 5; // HMAC signature for verification
+  string source = 6; // payment-sim-api, stripe, etc.
+  int32 attempt = 7; // Retry attempt number
 }
 
 // Payment webhook response
@@ -43,7 +43,7 @@ message ReceivePaymentWebhookResponse {
   bool accepted = 1;
   string correlation_id = 2;
   google.protobuf.Timestamp processed_at = 3;
-  string next_action = 4;             // "processed", "retry", "ignore"
+  string next_action = 4; // "processed", "retry", "ignore"
   common.v1.Error error = 5;
 }
 
@@ -52,7 +52,7 @@ message ReceiveExpiryWebhookRequest {
   string webhook_id = 1;
   string reservation_id = 2;
   google.protobuf.Timestamp expired_at = 3;
-  string source = 4;                  // eventbridge, lambda, scheduler
+  string source = 4; // eventbridge, lambda, scheduler
   map<string, string> metadata = 5;
 }
 
@@ -69,7 +69,7 @@ message RegisterWebhookRequest {
   string service_name = 1;
   string endpoint_url = 2;
   repeated WebhookEventType event_types = 3;
-  string secret = 4;                  // For HMAC signature
+  string secret = 4; // For HMAC signature
   WebhookConfig config = 5;
 }
 
@@ -83,15 +83,15 @@ message RegisterWebhookResponse {
 
 // Validate webhook request
 message ValidateWebhookRequest {
-  string payload = 1;                 // Raw webhook payload
-  string signature = 2;               // Provided signature
-  string webhook_id = 3;              // Webhook registration ID
+  string payload = 1; // Raw webhook payload
+  string signature = 2; // Provided signature
+  string webhook_id = 3; // Webhook registration ID
 }
 
 // Validate webhook response
 message ValidateWebhookResponse {
   bool valid = 1;
-  string reason = 2;                  // If invalid, reason why
+  string reason = 2; // If invalid, reason why
   google.protobuf.Timestamp validated_at = 3;
   common.v1.Error error = 4;
 }
@@ -103,7 +103,7 @@ message PaymentWebhookData {
   string transaction_id = 3;
   PaymentWebhookStatus status = 4;
   common.v1.Money amount = 5;
-  string failure_reason = 6;          // If status is failed
+  string failure_reason = 6; // If status is failed
   map<string, string> metadata = 7;
   google.protobuf.Timestamp processed_at = 8;
 }

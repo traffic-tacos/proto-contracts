@@ -2,13 +2,13 @@ syntax = "proto3";
 
 package common.v1;
 
+import "google/protobuf/timestamp.proto";
+import "proto/common/v1/errors.proto";
+
 option go_package = "github.com/traffic-tacos/proto-contracts/gen/go/common/v1;commonv1";
-option java_package = "com.traffic_tacos.common.v1";
 option java_multiple_files = true;
 option java_outer_classname = "AdminProto";
-
-import "proto/common/v1/errors.proto";
-import "google/protobuf/timestamp.proto";
+option java_package = "com.traffic_tacos.common.v1";
 
 // Admin service for system management and monitoring
 // Provides operational capabilities across all services
@@ -34,8 +34,8 @@ service AdminService {
 
 // System health request
 message GetSystemHealthRequest {
-  repeated string services = 1;       // Optional: specific services to check
-  bool include_dependencies = 2;      // Include downstream dependencies
+  repeated string services = 1; // Optional: specific services to check
+  bool include_dependencies = 2; // Include downstream dependencies
 }
 
 // System health response
@@ -60,7 +60,7 @@ message ServiceHealthStatus {
 
 // Dependency status
 message DependencyStatus {
-  string name = 1;                    // DynamoDB, SQS, EventBridge, etc.
+  string name = 1; // DynamoDB, SQS, EventBridge, etc.
   HealthStatus status = 2;
   string endpoint = 3;
   int32 response_time_ms = 4;
@@ -69,11 +69,11 @@ message DependencyStatus {
 
 // Metrics request
 message GetMetricsRequest {
-  string service = 1;                 // Optional: filter by service
-  string metric_type = 2;             // Optional: filter by metric type
+  string service = 1; // Optional: filter by service
+  string metric_type = 2; // Optional: filter by metric type
   google.protobuf.Timestamp start_time = 3;
   google.protobuf.Timestamp end_time = 4;
-  string aggregation = 5;             // sum, avg, max, min
+  string aggregation = 5; // sum, avg, max, min
 }
 
 // Metrics response
@@ -133,8 +133,8 @@ message TriggerOperationResponse {
 
 // Logs request
 message GetLogsRequest {
-  string service = 1;                 // Optional: filter by service
-  LogLevel level = 2;                 // Optional: filter by level
+  string service = 1; // Optional: filter by service
+  LogLevel level = 2; // Optional: filter by level
   google.protobuf.Timestamp start_time = 3;
   google.protobuf.Timestamp end_time = 4;
   int32 limit = 5;
@@ -164,7 +164,7 @@ message EmergencyActionRequest {
   EmergencyActionType action = 1;
   string reason = 2;
   map<string, string> parameters = 3;
-  bool confirm = 4;                   // Required confirmation
+  bool confirm = 4; // Required confirmation
 }
 
 // Emergency action response
@@ -237,9 +237,9 @@ enum LogLevel {
 // Emergency action type enumeration
 enum EmergencyActionType {
   EMERGENCY_ACTION_TYPE_UNSPECIFIED = 0;
-  EMERGENCY_ACTION_TYPE_STOP_ADMISSIONS = 1;    // Stop new queue admissions
+  EMERGENCY_ACTION_TYPE_STOP_ADMISSIONS = 1; // Stop new queue admissions
   EMERGENCY_ACTION_TYPE_CANCEL_RESERVATIONS = 2; // Cancel all pending reservations
-  EMERGENCY_ACTION_TYPE_CIRCUIT_BREAKER = 3;    // Enable circuit breaker
-  EMERGENCY_ACTION_TYPE_MAINTENANCE_MODE = 4;   // Enter maintenance mode
-  EMERGENCY_ACTION_TYPE_FORCE_FAILOVER = 5;     // Force failover to backup
+  EMERGENCY_ACTION_TYPE_CIRCUIT_BREAKER = 3; // Enable circuit breaker
+  EMERGENCY_ACTION_TYPE_MAINTENANCE_MODE = 4; // Enter maintenance mode
+  EMERGENCY_ACTION_TYPE_FORCE_FAILOVER = 5; // Force failover to backup
 }

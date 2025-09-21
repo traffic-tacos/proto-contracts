@@ -2,14 +2,14 @@ syntax = "proto3";
 
 package payment.v1;
 
+import "google/protobuf/timestamp.proto";
+import "proto/common/v1/errors.proto";
+import "proto/common/v1/types.proto";
+
 option go_package = "github.com/traffic-tacos/proto-contracts/gen/go/payment/v1;paymentv1";
-option java_package = "com.traffic_tacos.payment.v1";
 option java_multiple_files = true;
 option java_outer_classname = "PaymentProto";
-
-import "proto/common/v1/types.proto";
-import "proto/common/v1/errors.proto";
-import "google/protobuf/timestamp.proto";
+option java_package = "com.traffic_tacos.payment.v1";
 
 // Payment service simulates external payment processing
 // Supports various scenarios: approve, fail, delay, random
@@ -39,8 +39,8 @@ message CreatePaymentIntentRequest {
   common.v1.Money amount = 2;
   string user_id = 3;
   PaymentMethod method = 4;
-  PaymentScenario scenario = 5;  // For simulation
-  string webhook_url = 6;        // Callback URL
+  PaymentScenario scenario = 5; // For simulation
+  string webhook_url = 6; // Callback URL
   string idempotency_key = 7;
   PaymentMetadata metadata = 8;
 }
@@ -49,8 +49,8 @@ message CreatePaymentIntentRequest {
 message CreatePaymentIntentResponse {
   string payment_intent_id = 1;
   PaymentStatus status = 2;
-  string client_secret = 3;      // For frontend payment processing
-  string payment_url = 4;        // Redirect URL for payment
+  string client_secret = 3; // For frontend payment processing
+  string payment_url = 4; // Redirect URL for payment
   google.protobuf.Timestamp expires_at = 5;
   common.v1.Error error = 6;
 }
@@ -67,7 +67,7 @@ message ProcessPaymentResponse {
   string payment_id = 1;
   PaymentStatus status = 2;
   google.protobuf.Timestamp processed_at = 3;
-  string transaction_id = 4;     // External payment system transaction ID
+  string transaction_id = 4; // External payment system transaction ID
   PaymentResult result = 5;
   common.v1.Error error = 6;
 }
@@ -75,7 +75,7 @@ message ProcessPaymentResponse {
 // Get payment status request
 message GetPaymentStatusRequest {
   string payment_intent_id = 1;
-  string user_id = 2;  // For authorization
+  string user_id = 2; // For authorization
 }
 
 // Get payment status response
@@ -88,7 +88,7 @@ message GetPaymentStatusResponse {
 message CancelPaymentRequest {
   string payment_intent_id = 1;
   string reason = 2;
-  common.v1.Money refund_amount = 3;  // Optional partial refund
+  common.v1.Money refund_amount = 3; // Optional partial refund
   string idempotency_key = 4;
 }
 
@@ -104,8 +104,8 @@ message CancelPaymentResponse {
 // List payments request
 message ListPaymentsRequest {
   string user_id = 1;
-  PaymentStatus status = 2;      // Optional filter
-  string reservation_id = 3;     // Optional filter
+  PaymentStatus status = 2; // Optional filter
+  string reservation_id = 3; // Optional filter
   common.v1.Pagination pagination = 4;
 }
 
@@ -120,8 +120,8 @@ message ListPaymentsResponse {
 message SimulateWebhookRequest {
   string payment_intent_id = 1;
   PaymentStatus target_status = 2;
-  int32 delay_seconds = 3;       // Simulate processing delay
-  bool force_trigger = 4;        // Force immediate webhook
+  int32 delay_seconds = 3; // Simulate processing delay
+  bool force_trigger = 4; // Force immediate webhook
 }
 
 // Simulate webhook response
@@ -159,29 +159,29 @@ message PaymentDetails {
 
 // Credit card payment details
 message CreditCardDetails {
-  string card_number = 1;        // Masked for security
+  string card_number = 1; // Masked for security
   string expiry_month = 2;
   string expiry_year = 3;
   string cardholder_name = 4;
-  string cvv = 5;               // Should be encrypted/tokenized
+  string cvv = 5; // Should be encrypted/tokenized
 }
 
 // Bank transfer details
 message BankTransferDetails {
   string bank_code = 1;
-  string account_number = 2;     // Masked for security
+  string account_number = 2; // Masked for security
   string account_holder = 3;
 }
 
 // Mobile payment details
 message MobilePayDetails {
-  string provider = 1;          // KakaoPay, NaverPay, etc.
+  string provider = 1; // KakaoPay, NaverPay, etc.
   string mobile_number = 2;
 }
 
 // Payment metadata
 message PaymentMetadata {
-  string source = 1;            // web, mobile, api
+  string source = 1; // web, mobile, api
   string user_agent = 2;
   string ip_address = 3;
   string session_id = 4;
@@ -211,21 +211,21 @@ enum PaymentMethod {
 // Payment status enumeration
 enum PaymentStatus {
   PAYMENT_STATUS_UNSPECIFIED = 0;
-  PAYMENT_STATUS_PENDING = 1;       // Created, awaiting processing
-  PAYMENT_STATUS_PROCESSING = 2;    // Currently being processed
-  PAYMENT_STATUS_COMPLETED = 3;     // Successfully completed
-  PAYMENT_STATUS_FAILED = 4;        // Failed processing
-  PAYMENT_STATUS_CANCELLED = 5;     // Cancelled by user or system
-  PAYMENT_STATUS_REFUNDED = 6;      // Refunded after completion
-  PAYMENT_STATUS_EXPIRED = 7;       // Payment intent expired
+  PAYMENT_STATUS_PENDING = 1; // Created, awaiting processing
+  PAYMENT_STATUS_PROCESSING = 2; // Currently being processed
+  PAYMENT_STATUS_COMPLETED = 3; // Successfully completed
+  PAYMENT_STATUS_FAILED = 4; // Failed processing
+  PAYMENT_STATUS_CANCELLED = 5; // Cancelled by user or system
+  PAYMENT_STATUS_REFUNDED = 6; // Refunded after completion
+  PAYMENT_STATUS_EXPIRED = 7; // Payment intent expired
 }
 
 // Payment scenario for simulation
 enum PaymentScenario {
   PAYMENT_SCENARIO_UNSPECIFIED = 0;
-  PAYMENT_SCENARIO_APPROVE = 1;     // Always approve
-  PAYMENT_SCENARIO_FAIL = 2;        // Always fail
-  PAYMENT_SCENARIO_DELAY = 3;       // Approve with delay
-  PAYMENT_SCENARIO_RANDOM = 4;      // Random outcome
-  PAYMENT_SCENARIO_TIMEOUT = 5;     // Simulate timeout
+  PAYMENT_SCENARIO_APPROVE = 1; // Always approve
+  PAYMENT_SCENARIO_FAIL = 2; // Always fail
+  PAYMENT_SCENARIO_DELAY = 3; // Approve with delay
+  PAYMENT_SCENARIO_RANDOM = 4; // Random outcome
+  PAYMENT_SCENARIO_TIMEOUT = 5; // Simulate timeout
 }

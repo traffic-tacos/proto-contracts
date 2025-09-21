@@ -2,14 +2,14 @@ syntax = "proto3";
 
 package reservation.v1;
 
+import "google/protobuf/timestamp.proto";
+import "proto/common/v1/errors.proto";
+import "proto/common/v1/types.proto";
+
 option go_package = "github.com/traffic-tacos/proto-contracts/gen/go/reservation/v1;reservationv1";
-option java_package = "com.traffic_tacos.reservation.v1";
 option java_multiple_files = true;
 option java_outer_classname = "InventoryProto";
-
-import "proto/common/v1/types.proto";
-import "proto/common/v1/errors.proto";
-import "google/protobuf/timestamp.proto";
+option java_package = "com.traffic_tacos.reservation.v1";
 
 // Inventory service manages seat availability and reservations
 // This service ensures zero overselling through DynamoDB conditional updates
@@ -36,9 +36,9 @@ service InventoryService {
 // Check availability request
 message CheckAvailabilityRequest {
   string event_id = 1;
-  repeated string seat_ids = 2;  // Optional: specific seats to check
-  int32 quantity = 3;            // Optional: number of any available seats
-  string section = 4;            // Optional: preferred section
+  repeated string seat_ids = 2; // Optional: specific seats to check
+  int32 quantity = 3; // Optional: number of any available seats
+  string section = 4; // Optional: preferred section
 }
 
 // Check availability response
@@ -96,7 +96,7 @@ message ReleaseHoldRequest {
   string event_id = 2;
   repeated string seat_ids = 3;
   int32 quantity = 4;
-  string reason = 5;  // EXPIRED, CANCELLED, FAILED_PAYMENT
+  string reason = 5; // EXPIRED, CANCELLED, FAILED_PAYMENT
   string idempotency_key = 6;
 }
 
@@ -111,7 +111,7 @@ message ReleaseHoldResponse {
 // Get inventory status request
 message GetInventoryStatusRequest {
   string event_id = 1;
-  string section = 2;  // Optional: specific section
+  string section = 2; // Optional: specific section
 }
 
 // Get inventory status response

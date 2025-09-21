@@ -2,15 +2,15 @@ syntax = "proto3";
 
 package gateway.v1;
 
+import "google/protobuf/timestamp.proto";
+import "proto/common/v1/errors.proto";
+import "proto/payment/v1/payment.proto";
+import "proto/reservation/v1/reservation.proto";
+
 option go_package = "github.com/traffic-tacos/proto-contracts/gen/go/gateway/v1;gatewayv1";
-option java_package = "com.traffic_tacos.gateway.v1";
 option java_multiple_files = true;
 option java_outer_classname = "WebSocketProto";
-
-import "proto/common/v1/errors.proto";
-import "proto/reservation/v1/reservation.proto";
-import "proto/payment/v1/payment.proto";
-import "google/protobuf/timestamp.proto";
+option java_package = "com.traffic_tacos.gateway.v1";
 
 // WebSocket service for real-time updates
 // Handles queue position updates, reservation status changes, payment updates
@@ -67,7 +67,7 @@ message SystemUpdate {
 message StreamReservationUpdatesRequest {
   string user_id = 1;
   string session_id = 2;
-  repeated string reservation_ids = 3;  // Optional: filter specific reservations
+  repeated string reservation_ids = 3; // Optional: filter specific reservations
 }
 
 // Reservation update event
@@ -92,7 +92,7 @@ message ReservationUpdate {
 message StreamPaymentUpdatesRequest {
   string user_id = 1;
   string session_id = 2;
-  repeated string payment_intent_ids = 3;  // Optional: filter specific payments
+  repeated string payment_intent_ids = 3; // Optional: filter specific payments
 }
 
 // Payment update event
@@ -169,7 +169,7 @@ enum ReservationEventType {
   RESERVATION_EVENT_TYPE_CONFIRMED = 2;
   RESERVATION_EVENT_TYPE_CANCELLED = 3;
   RESERVATION_EVENT_TYPE_EXPIRED = 4;
-  RESERVATION_EVENT_TYPE_EXPIRING_SOON = 5;  // Warning before expiry
+  RESERVATION_EVENT_TYPE_EXPIRING_SOON = 5; // Warning before expiry
 }
 
 // Payment event type enumeration

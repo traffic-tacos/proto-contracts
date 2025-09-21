@@ -2,14 +2,14 @@ syntax = "proto3";
 
 package reservation.v1;
 
+import "google/protobuf/timestamp.proto";
+import "proto/common/v1/errors.proto";
+import "proto/common/v1/types.proto";
+
 option go_package = "github.com/traffic-tacos/proto-contracts/gen/go/reservation/v1;reservationv1";
-option java_package = "com.traffic_tacos.reservation.v1";
 option java_multiple_files = true;
 option java_outer_classname = "ReservationProto";
-
-import "proto/common/v1/types.proto";
-import "proto/common/v1/errors.proto";
-import "google/protobuf/timestamp.proto";
+option java_package = "com.traffic_tacos.reservation.v1";
 
 // Reservation service manages the ticket reservation lifecycle
 // Handles 60-second holds, EventBridge integration, and idempotency
@@ -39,7 +39,7 @@ message CreateReservationRequest {
   repeated string seat_ids = 2;
   int32 quantity = 3;
   string user_id = 4;
-  string reservation_token = 5;  // From queue admission
+  string reservation_token = 5; // From queue admission
   string idempotency_key = 6;
   ReservationMetadata metadata = 7;
 }
@@ -51,14 +51,14 @@ message CreateReservationResponse {
   google.protobuf.Timestamp hold_expires_at = 3;
   repeated common.v1.Seat reserved_seats = 4;
   common.v1.Money total_amount = 5;
-  string payment_url = 6;  // URL for payment processing
+  string payment_url = 6; // URL for payment processing
   common.v1.Error error = 7;
 }
 
 // Get reservation request
 message GetReservationRequest {
   string reservation_id = 1;
-  string user_id = 2;  // For authorization
+  string user_id = 2; // For authorization
 }
 
 // Get reservation response
@@ -103,8 +103,8 @@ message CancelReservationResponse {
 // List reservations request
 message ListReservationsRequest {
   string user_id = 1;
-  ReservationStatus status = 2;  // Optional filter
-  string event_id = 3;           // Optional filter
+  ReservationStatus status = 2; // Optional filter
+  string event_id = 3; // Optional filter
   common.v1.Pagination pagination = 4;
 }
 
@@ -119,7 +119,7 @@ message ListReservationsResponse {
 message ExtendHoldRequest {
   string reservation_id = 1;
   string user_id = 2;
-  int32 extension_seconds = 3;  // Additional seconds to extend
+  int32 extension_seconds = 3; // Additional seconds to extend
   string reason = 4;
   string idempotency_key = 5;
 }
@@ -145,13 +145,13 @@ message Reservation {
   google.protobuf.Timestamp updated_at = 9;
   google.protobuf.Timestamp hold_expires_at = 10;
   string payment_intent_id = 11;
-  string order_id = 12;  // Set when confirmed
+  string order_id = 12; // Set when confirmed
   ReservationMetadata metadata = 13;
 }
 
 // Reservation metadata
 message ReservationMetadata {
-  string source = 1;        // web, mobile, api
+  string source = 1; // web, mobile, api
   string user_agent = 2;
   string ip_address = 3;
   string session_id = 4;
@@ -161,11 +161,11 @@ message ReservationMetadata {
 // Reservation status enumeration
 enum ReservationStatus {
   RESERVATION_STATUS_UNSPECIFIED = 0;
-  RESERVATION_STATUS_PENDING = 1;      // Initial creation, seats held
-  RESERVATION_STATUS_HOLD = 2;         // Actively held (same as PENDING)
-  RESERVATION_STATUS_CONFIRMED = 3;    // Payment approved, seats committed
-  RESERVATION_STATUS_CANCELLED = 4;    // User cancelled
-  RESERVATION_STATUS_EXPIRED = 5;      // Hold time expired
-  RESERVATION_STATUS_FAILED = 6;       // Payment or system failure
-  RESERVATION_STATUS_REFUNDED = 7;     // Post-confirmation refund
+  RESERVATION_STATUS_PENDING = 1; // Initial creation, seats held
+  RESERVATION_STATUS_HOLD = 2; // Actively held (same as PENDING)
+  RESERVATION_STATUS_CONFIRMED = 3; // Payment approved, seats committed
+  RESERVATION_STATUS_CANCELLED = 4; // User cancelled
+  RESERVATION_STATUS_EXPIRED = 5; // Hold time expired
+  RESERVATION_STATUS_FAILED = 6; // Payment or system failure
+  RESERVATION_STATUS_REFUNDED = 7; // Post-confirmation refund
 }

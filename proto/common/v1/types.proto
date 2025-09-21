@@ -2,12 +2,12 @@ syntax = "proto3";
 
 package common.v1;
 
+import "google/protobuf/timestamp.proto";
+
 option go_package = "github.com/traffic-tacos/proto-contracts/gen/go/common/v1;commonv1";
-option java_package = "com.traffic_tacos.common.v1";
 option java_multiple_files = true;
 option java_outer_classname = "CommonTypesProto";
-
-import "google/protobuf/timestamp.proto";
+option java_package = "com.traffic_tacos.common.v1";
 
 // Money represents a monetary amount with currency
 message Money {
