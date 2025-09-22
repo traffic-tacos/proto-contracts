@@ -2,13 +2,13 @@ version: v1
 plugins:
   # Go generation for gateway-api, inventory-api, payment-sim-api, worker
   - plugin: buf.build/protocolbuffers/go
-    out: gen/go
+    out: .
     opt:
-      - paths=source_relative
+      - module=github.com/traffic-tacos/proto-contracts
   - plugin: buf.build/grpc/go
-    out: gen/go
+    out: .
     opt:
-      - paths=source_relative
+      - module=github.com/traffic-tacos/proto-contracts
       - require_unimplemented_servers=false
 
   # Java/Kotlin generation for reservation-api (Spring Boot)

@@ -117,16 +117,18 @@ go get github.com/traffic-tacos/proto-contracts@latest
 
 ```go
 import (
-    commonpb "github.com/traffic-tacos/proto-contracts/gen/go/common/v1"
-    gatewaypb "github.com/traffic-tacos/proto-contracts/gen/go/gateway/v1"
-    reservationpb "github.com/traffic-tacos/proto-contracts/gen/go/reservation/v1"
-    paymentpb "github.com/traffic-tacos/proto-contracts/gen/go/payment/v1"
+    commonv1 "github.com/traffic-tacos/proto-contracts/gen/go/common/v1"
+    gatewayv1 "github.com/traffic-tacos/proto-contracts/gen/go/gateway/v1"
+    reservationv1 "github.com/traffic-tacos/proto-contracts/gen/go/reservation/v1"
+    paymentv1 "github.com/traffic-tacos/proto-contracts/gen/go/payment/v1"
 )
 
 // Usage examples
-queueClient := gatewaypb.NewQueueServiceClient(conn)
-reservationClient := reservationpb.NewReservationServiceClient(conn)
-workerClient := reservationpb.NewWorkerServiceClient(conn)
+queueClient := gatewayv1.NewQueueServiceClient(conn)
+reservationClient := reservationv1.NewReservationServiceClient(conn)
+inventoryClient := reservationv1.NewInventoryServiceClient(conn)
+paymentClient := paymentv1.NewPaymentServiceClient(conn)
+workerClient := reservationv1.NewWorkerServiceClient(conn)
 ```
 
 ### For Kotlin Services (reservation-api)
@@ -160,6 +162,8 @@ val paymentClient = PaymentServiceGrpcKt.PaymentServiceCoroutineStub(channel)
 
 ### Code Generation
 
+This repository includes pre-generated code for immediate use. To regenerate:
+
 ```bash
 # Generate code for all languages
 make generate
@@ -168,7 +172,7 @@ make generate
 make generate-go
 
 # Generate Java/Kotlin code only
-make generate-java
+make generate-kotlin
 
 # Lint proto files
 make lint
@@ -176,6 +180,10 @@ make lint
 # Check for breaking changes
 make breaking
 ```
+
+**Generated Files:**
+- **Go**: 20 files in `gen/go/` (ready for import)
+- **Java**: 335 files in `gen/java/` (ready for Maven/Gradle)
 
 ### Manual Generation
 
