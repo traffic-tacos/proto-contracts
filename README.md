@@ -2,6 +2,22 @@
 
 This repository contains the centralized gRPC protocol definitions for the Traffic Tacos microservices platform.
 
+## Table of Contents
+
+- [Architecture Overview](#architecture-overview)
+- [Repository Structure](#repository-structure)
+- [Services & Proto Definitions](#services--proto-definitions)
+- [Installation & Usage](#installation--usage)
+  - [Go Projects](#go-projects)
+  - [Kotlin/Java Projects](#kotlinjava-projects)
+  - [Server Implementation Examples](#server-implementation-examples)
+- [Quick Start Guide](#quick-start-guide)
+- [Development](#development)
+- [Performance Targets](#performance-targets)
+- [Versioning](#versioning)
+- [Contributing](#contributing)
+- [Related Repositories](#related-repositories)
+
 ## Architecture Overview
 
 Traffic Tacos is a high-performance ticket reservation system designed to handle **30k RPS traffic** with the following service architecture:
@@ -109,47 +125,527 @@ proto-contracts/
 
 ## Installation & Usage
 
-### For Go Services (gateway-api, inventory-api, payment-sim-api, worker)
+### Go Projects
+
+Traffic Tacos proto contracts are available as a Go module for easy integration.
+
+#### Installation
 
 ```bash
 go get github.com/traffic-tacos/proto-contracts@latest
 ```
 
+#### Project Setup
+
+Add to your `go.mod`:
 ```go
+module your-service
+
+go 1.23
+
+require (
+    github.com/traffic-tacos/proto-contracts v0.1.0
+    google.golang.org/grpc v1.75.1
+    google.golang.org/protobuf v1.36.6
+)
+```
+
+#### Import and Usage
+
+```go
+package main
+
 import (
+    "context"
+    "log"
+    "time"
+
     commonv1 "github.com/traffic-tacos/proto-contracts/gen/go/common/v1"
     gatewayv1 "github.com/traffic-tacos/proto-contracts/gen/go/gateway/v1"
     reservationv1 "github.com/traffic-tacos/proto-contracts/gen/go/reservation/v1"
     paymentv1 "github.com/traffic-tacos/proto-contracts/gen/go/payment/v1"
+
+    "google.golang.org/grpc"
+    "google.golang.org/grpc/credentials/insecure"
 )
 
-// Usage examples
-queueClient := gatewayv1.NewQueueServiceClient(conn)
-reservationClient := reservationv1.NewReservationServiceClient(conn)
-inventoryClient := reservationv1.NewInventoryServiceClient(conn)
-paymentClient := paymentv1.NewPaymentServiceClient(conn)
-workerClient := reservationv1.NewWorkerServiceClient(conn)
-```
+func main() {
+    // Connect to services
+    conn, err := grpc.Dial("localhost:8080", grpc.WithTransportCredentials(insecure.NewCredentials()))
+    if err != nil {
+        log.Fatal(err)
+    }
+    defer conn.Close()
 
-### For Kotlin Services (reservation-api)
+    // Create service clients
+    queueClient := gatewayv1.NewQueueServiceClient(conn)
+    reservationClient := reservationv1.NewReservationServiceClient(conn)
+    inventoryClient := reservationv1.NewInventoryServiceClient(conn)
+    paymentClient := paymentv1.NewPaymentServiceClient(conn)
 
-```kotlin
-// build.gradle.kts
-dependencies {
-    implementation("com.traffic-tacos:proto-contracts:1.0.0")
-    implementation("io.grpc:grpc-kotlin-stub:1.4.0")
+    // Example: Join queue
+    queueResp, err := queueClient.JoinQueue(context.Background(), &gatewayv1.JoinQueueRequest{
+        EventId: "event_123",
+        UserId:  "user_456",
+    })
+    if err != nil {
+        log.Fatal(err)
+    }
+    log.Printf("Queue position: %d", queueResp.Position)
+
+    // Example: Check inventory
+    invResp, err := inventoryClient.CheckAvailability(context.Background(), &reservationv1.CheckAvailabilityRequest{
+        EventId:  "event_123",
+        Quantity: 2,
+    })
+    if err != nil {
+        log.Fatal(err)
+    }
+    log.Printf("Available seats: %d", len(invResp.AvailableSeats))
+
+    // Example: Create reservation
+    reservation, err := reservationClient.CreateReservation(context.Background(), &reservationv1.CreateReservationRequest{
+        EventId:  "event_123",
+        UserId:   "user_456",
+        SeatIds:  []string{"A1", "A2"},
+        Quantity: 2,
+        TotalAmount: &commonv1.Money{
+            Amount:   100000, // 1000 KRW
+            Currency: "KRW",
+        },
+    })
+    if err != nil {
+        log.Fatal(err)
+    }
+    log.Printf("Reservation created: %s", reservation.ReservationId)
 }
 ```
 
+### Kotlin/Java Projects
+
+#### Gradle Setup (build.gradle.kts)
+
 ```kotlin
-import com.traffic_tacos.reservation.v1.ReservationServiceGrpcKt
+dependencies {
+    // Proto contracts
+    implementation("com.traffic-tacos:proto-contracts:1.0.0")
+
+    // gRPC dependencies
+    implementation("io.grpc:grpc-kotlin-stub:1.4.3")
+    implementation("io.grpc:grpc-protobuf:1.69.0")
+    implementation("io.grpc:grpc-netty:1.69.0")
+
+    // Coroutines for async operations
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.9.0")
+}
+```
+
+#### Maven Setup (pom.xml)
+
+```xml
+<dependencies>
+    <!-- Proto contracts -->
+    <dependency>
+        <groupId>com.traffic-tacos</groupId>
+        <artifactId>proto-contracts</artifactId>
+        <version>1.0.0</version>
+    </dependency>
+
+    <!-- gRPC dependencies -->
+    <dependency>
+        <groupId>io.grpc</groupId>
+        <artifactId>grpc-kotlin-stub</artifactId>
+        <version>1.4.3</version>
+    </dependency>
+    <dependency>
+        <groupId>io.grpc</groupId>
+        <artifactId>grpc-protobuf</artifactId>
+        <version>1.69.0</version>
+    </dependency>
+    <dependency>
+        <groupId>io.grpc</groupId>
+        <artifactId>grpc-netty</artifactId>
+        <version>1.69.0</version>
+    </dependency>
+</dependencies>
+```
+
+#### Kotlin Usage Example
+
+```kotlin
+package com.traffic_tacos.example
+
+import com.traffic_tacos.common.v1.Money
+import com.traffic_tacos.gateway.v1.JoinQueueRequest
 import com.traffic_tacos.gateway.v1.QueueServiceGrpcKt
+import com.traffic_tacos.reservation.v1.CreateReservationRequest
+import com.traffic_tacos.reservation.v1.ReservationServiceGrpcKt
+import com.traffic_tacos.reservation.v1.CheckAvailabilityRequest
+import com.traffic_tacos.reservation.v1.InventoryServiceGrpcKt
+import com.traffic_tacos.payment.v1.CreatePaymentIntentRequest
 import com.traffic_tacos.payment.v1.PaymentServiceGrpcKt
 
-// Usage examples
-val reservationClient = ReservationServiceGrpcKt.ReservationServiceCoroutineStub(channel)
-val queueClient = QueueServiceGrpcKt.QueueServiceCoroutineStub(channel)
-val paymentClient = PaymentServiceGrpcKt.PaymentServiceCoroutineStub(channel)
+import io.grpc.ManagedChannelBuilder
+import kotlinx.coroutines.runBlocking
+
+class TrafficTacosClient {
+
+    private val channel = ManagedChannelBuilder
+        .forAddress("localhost", 8080)
+        .usePlaintext()
+        .build()
+
+    private val queueService = QueueServiceGrpcKt.QueueServiceCoroutineStub(channel)
+    private val reservationService = ReservationServiceGrpcKt.ReservationServiceCoroutineStub(channel)
+    private val inventoryService = InventoryServiceGrpcKt.InventoryServiceCoroutineStub(channel)
+    private val paymentService = PaymentServiceGrpcKt.PaymentServiceCoroutineStub(channel)
+
+    suspend fun makeReservation(eventId: String, userId: String) {
+        try {
+            // 1. Join queue
+            val queueResponse = queueService.joinQueue(
+                JoinQueueRequest.newBuilder()
+                    .setEventId(eventId)
+                    .setUserId(userId)
+                    .build()
+            )
+            println("Queue position: ${queueResponse.position}")
+
+            // 2. Check availability
+            val availabilityResponse = inventoryService.checkAvailability(
+                CheckAvailabilityRequest.newBuilder()
+                    .setEventId(eventId)
+                    .setQuantity(2)
+                    .build()
+            )
+            println("Available seats: ${availabilityResponse.availableSeatsCount}")
+
+            // 3. Create reservation
+            val reservationResponse = reservationService.createReservation(
+                CreateReservationRequest.newBuilder()
+                    .setEventId(eventId)
+                    .setUserId(userId)
+                    .addSeatIds("A1")
+                    .addSeatIds("A2")
+                    .setQuantity(2)
+                    .setTotalAmount(
+                        Money.newBuilder()
+                            .setAmount(100000)
+                            .setCurrency("KRW")
+                            .build()
+                    )
+                    .build()
+            )
+            println("Reservation created: ${reservationResponse.reservationId}")
+
+            // 4. Process payment
+            val paymentResponse = paymentService.createPaymentIntent(
+                CreatePaymentIntentRequest.newBuilder()
+                    .setReservationId(reservationResponse.reservationId)
+                    .setUserId(userId)
+                    .setAmount(
+                        Money.newBuilder()
+                            .setAmount(100000)
+                            .setCurrency("KRW")
+                            .build()
+                    )
+                    .build()
+            )
+            println("Payment intent: ${paymentResponse.paymentIntentId}")
+
+        } catch (e: Exception) {
+            println("Error: ${e.message}")
+        }
+    }
+
+    fun close() {
+        channel.shutdown()
+    }
+}
+
+fun main() = runBlocking {
+    val client = TrafficTacosClient()
+    client.makeReservation("event_123", "user_456")
+    client.close()
+}
+```
+
+#### Java Usage Example
+
+```java
+package com.traffic_tacos.example;
+
+import com.traffic_tacos.common.v1.Money;
+import com.traffic_tacos.gateway.v1.JoinQueueRequest;
+import com.traffic_tacos.gateway.v1.QueueServiceGrpc;
+import com.traffic_tacos.reservation.v1.CreateReservationRequest;
+import com.traffic_tacos.reservation.v1.ReservationServiceGrpc;
+
+import io.grpc.ManagedChannel;
+import io.grpc.ManagedChannelBuilder;
+
+public class TrafficTacosJavaClient {
+
+    private final ManagedChannel channel;
+    private final QueueServiceGrpc.QueueServiceBlockingStub queueService;
+    private final ReservationServiceGrpc.ReservationServiceBlockingStub reservationService;
+
+    public TrafficTacosJavaClient() {
+        channel = ManagedChannelBuilder
+            .forAddress("localhost", 8080)
+            .usePlaintext()
+            .build();
+
+        queueService = QueueServiceGrpc.newBlockingStub(channel);
+        reservationService = ReservationServiceGrpc.newBlockingStub(channel);
+    }
+
+    public void makeReservation(String eventId, String userId) {
+        try {
+            // Join queue
+            var queueResponse = queueService.joinQueue(
+                JoinQueueRequest.newBuilder()
+                    .setEventId(eventId)
+                    .setUserId(userId)
+                    .build()
+            );
+            System.out.println("Queue position: " + queueResponse.getPosition());
+
+            // Create reservation
+            var reservationResponse = reservationService.createReservation(
+                CreateReservationRequest.newBuilder()
+                    .setEventId(eventId)
+                    .setUserId(userId)
+                    .addSeatIds("A1")
+                    .addSeatIds("A2")
+                    .setQuantity(2)
+                    .setTotalAmount(
+                        Money.newBuilder()
+                            .setAmount(100000)
+                            .setCurrency("KRW")
+                            .build()
+                    )
+                    .build()
+            );
+            System.out.println("Reservation created: " + reservationResponse.getReservationId());
+
+        } catch (Exception e) {
+            System.err.println("Error: " + e.getMessage());
+        }
+    }
+
+    public void close() {
+        channel.shutdown();
+    }
+
+    public static void main(String[] args) {
+        var client = new TrafficTacosJavaClient();
+        client.makeReservation("event_123", "user_456");
+        client.close();
+    }
+}
+```
+
+### Server Implementation Examples
+
+#### Go gRPC Server
+
+```go
+package main
+
+import (
+    "context"
+    "log"
+    "net"
+
+    reservationv1 "github.com/traffic-tacos/proto-contracts/gen/go/reservation/v1"
+    "google.golang.org/grpc"
+)
+
+type reservationServer struct {
+    reservationv1.UnimplementedReservationServiceServer
+}
+
+func (s *reservationServer) CreateReservation(ctx context.Context, req *reservationv1.CreateReservationRequest) (*reservationv1.CreateReservationResponse, error) {
+    // Implementation logic here
+    return &reservationv1.CreateReservationResponse{
+        ReservationId: "rsv_" + req.UserId + "_" + req.EventId,
+        Status:        reservationv1.ReservationStatus_RESERVATION_STATUS_PENDING,
+    }, nil
+}
+
+func main() {
+    lis, err := net.Listen("tcp", ":8080")
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    server := grpc.NewServer()
+    reservationv1.RegisterReservationServiceServer(server, &reservationServer{})
+
+    log.Println("Server starting on :8080")
+    if err := server.Serve(lis); err != nil {
+        log.Fatal(err)
+    }
+}
+```
+
+#### Kotlin/Spring Boot gRPC Server
+
+```kotlin
+@GrpcService
+class ReservationServiceImpl : ReservationServiceGrpcKt.ReservationServiceCoroutineImplBase() {
+
+    override suspend fun createReservation(request: CreateReservationRequest): CreateReservationResponse {
+        // Implementation logic here
+        return CreateReservationResponse.newBuilder()
+            .setReservationId("rsv_${request.userId}_${request.eventId}")
+            .setStatus(ReservationStatus.RESERVATION_STATUS_PENDING)
+            .build()
+    }
+}
+```
+
+## Quick Start Guide
+
+### 1. Setting Up Your Project
+
+Choose your language and follow the setup:
+
+**Go Project:**
+```bash
+# Create new Go module
+go mod init my-traffic-tacos-service
+
+# Add proto contracts dependency
+go get github.com/traffic-tacos/proto-contracts@latest
+
+# Add gRPC dependencies
+go get google.golang.org/grpc@latest
+go get google.golang.org/protobuf@latest
+```
+
+**Kotlin/Gradle Project:**
+```kotlin
+// build.gradle.kts
+plugins {
+    kotlin("jvm") version "2.1.0"
+}
+
+dependencies {
+    implementation("com.traffic-tacos:proto-contracts:1.0.0")
+    implementation("io.grpc:grpc-kotlin-stub:1.4.3")
+    implementation("io.grpc:grpc-protobuf:1.69.0")
+    implementation("io.grpc:grpc-netty:1.69.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.9.0")
+}
+```
+
+### 2. Basic Client Implementation
+
+**Go Client (5 minutes):**
+```go
+package main
+
+import (
+    "context"
+    "log"
+
+    gatewayv1 "github.com/traffic-tacos/proto-contracts/gen/go/gateway/v1"
+    "google.golang.org/grpc"
+    "google.golang.org/grpc/credentials/insecure"
+)
+
+func main() {
+    // Connect to gateway
+    conn, err := grpc.Dial("gateway.traffic-tacos.com:443",
+        grpc.WithTransportCredentials(insecure.NewCredentials()))
+    if err != nil {
+        log.Fatal(err)
+    }
+    defer conn.Close()
+
+    // Create client and join queue
+    client := gatewayv1.NewQueueServiceClient(conn)
+    resp, err := client.JoinQueue(context.Background(), &gatewayv1.JoinQueueRequest{
+        EventId: "bts-concert-2024",
+        UserId:  "user123",
+    })
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    log.Printf("You are #%d in queue. Wait time: %d seconds",
+        resp.Position, resp.EstimatedWaitSeconds)
+}
+```
+
+**Kotlin Client (5 minutes):**
+```kotlin
+import com.traffic_tacos.gateway.v1.JoinQueueRequest
+import com.traffic_tacos.gateway.v1.QueueServiceGrpcKt
+import io.grpc.ManagedChannelBuilder
+import kotlinx.coroutines.runBlocking
+
+fun main() = runBlocking {
+    val channel = ManagedChannelBuilder
+        .forAddress("gateway.traffic-tacos.com", 443)
+        .useTransportSecurity()
+        .build()
+
+    val client = QueueServiceGrpcKt.QueueServiceCoroutineStub(channel)
+
+    val response = client.joinQueue(
+        JoinQueueRequest.newBuilder()
+            .setEventId("bts-concert-2024")
+            .setUserId("user123")
+            .build()
+    )
+
+    println("You are #${response.position} in queue. Wait time: ${response.estimatedWaitSeconds} seconds")
+
+    channel.shutdown()
+}
+```
+
+### 3. Available Services
+
+| Service | Port | Description |
+|---------|------|-------------|
+| **Gateway API** | :8080 | Queue management, rate limiting, authentication |
+| **Reservation API** | :8081 | Ticket reservations, 60-second holds |
+| **Inventory API** | :8082 | Real-time seat availability, zero overselling |
+| **Payment Simulator** | :8083 | Payment processing simulation |
+
+### 4. Common Usage Patterns
+
+#### Complete Reservation Flow
+```go
+// 1. Join queue → 2. Check inventory → 3. Reserve → 4. Pay
+```
+
+#### Error Handling
+```go
+if status.Code(err) == codes.ResourceExhausted {
+    // Queue is full, try again later
+}
+```
+
+#### Timeouts and Retries
+```go
+ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+defer cancel()
+```
+
+### 5. Testing Your Integration
+
+```bash
+# Test gRPC connectivity
+grpcurl -plaintext localhost:8080 gateway.v1.QueueService/GetQueueStatus
+
+# Monitor queue position
+grpcurl -plaintext -d '{"event_id":"test","user_id":"me"}' \
+  localhost:8080 gateway.v1.QueueService/JoinQueue
 ```
 
 ## Development
