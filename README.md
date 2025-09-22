@@ -724,3 +724,10 @@ This repository follows semantic versioning:
 - [payment-sim-api](https://github.com/traffic-tacos/payment-sim-api) - Payment Simulator (Go)
 - [reservation-worker](https://github.com/traffic-tacos/reservation-worker) - Background Worker (Go/Kotlin)
 - [reservation-web](https://github.com/traffic-tacos/reservation-web) - Frontend (React)
+
+## Support
+
+For issues, questions, or contributions:
+- 📋 [Issues](https://github.com/traffic-tacos/proto-contracts/issues)
+- 💬 [Discussions](https://github.com/traffic-tacos/proto-contracts/discussions)
+- 📧 Contact: proto-team@traffic-tacos.com
