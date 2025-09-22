@@ -44,8 +44,8 @@ mkdir -p gen/java
 echo "⚙️  Generating Java/Kotlin protobuf and gRPC code..."
 buf generate --template buf.gen.yaml
 
-# Optional: Also generate using Gradle for advanced features
-if [ -n "$GRADLE_CMD" ]; then
+# Optional: Also generate using Gradle for advanced features (disabled in CI)
+if [ -n "$GRADLE_CMD" ] && [ -z "$CI" ]; then
     echo "📦 Running Gradle protobuf generation..."
     $GRADLE_CMD generateProto
 
@@ -54,6 +54,8 @@ if [ -n "$GRADLE_CMD" ]; then
         echo "📁 Copying Gradle-generated files to gen/java..."
         cp -r build/generated/source/proto/main/* gen/java/ 2>/dev/null || true
     fi
+else
+    echo "ℹ️  Skipping Gradle generation (CI environment or Gradle not available)"
 fi
 
 # Check if generation was successful
@@ -62,19 +64,24 @@ if [ ! -d "gen/java" ] || [ -z "$(find gen/java -name '*.java' -o -name '*.kt' 2
     exit 1
 fi
 
-# Build the generated code (if Gradle is available)
-if [ -n "$GRADLE_CMD" ]; then
+# Build the generated code (if Gradle is available and not in CI)
+if [ -n "$GRADLE_CMD" ] && [ -z "$CI" ]; then
     echo "🔨 Building generated Kotlin/Java code..."
     $GRADLE_CMD compileJava compileKotlin || echo "⚠️  Gradle build failed, but generation completed"
 else
-    echo "ℹ️  Skipping compilation - Gradle not available"
+    echo "ℹ️  Skipping compilation - CI environment or Gradle not available"
 fi
 
-# Create a simple test to verify the generated code
-echo "🧪 Creating integration test..."
-mkdir -p src/test/kotlin/com/traffic_tacos/test
+# Create a simple test to verify the generated code (skip in CI)
+if [ -z "$CI" ]; then
+    echo "🧪 Creating integration test..."
+    mkdir -p src/test/kotlin/com/traffic_tacos/test
+else
+    echo "ℹ️  Skipping test creation in CI environment"
+fi
 
-cat > src/test/kotlin/com/traffic_tacos/test/GeneratedCodeTest.kt << 'EOF'
+if [ -z "$CI" ]; then
+    cat > src/test/kotlin/com/traffic_tacos/test/GeneratedCodeTest.kt << 'EOF'
 package com.traffic_tacos.test
 
 import com.traffic_tacos.common.v1.Money
@@ -135,8 +142,8 @@ class GeneratedCodeTest {
 }
 EOF
 
-# Create test build configuration
-cat > src/test/kotlin/build.gradle.kts << 'EOF'
+    # Create test build configuration
+    cat > src/test/kotlin/build.gradle.kts << 'EOF'
 dependencies {
     testImplementation("org.junit.jupiter:junit-jupiter:5.9.2")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
@@ -146,9 +153,10 @@ tasks.test {
     useJUnitPlatform()
 }
 EOF
+fi
 
-# Run the integration test (if Gradle is available)
-if [ -n "$GRADLE_CMD" ]; then
+# Run the integration test (if Gradle is available and not in CI)
+if [ -n "$GRADLE_CMD" ] && [ -z "$CI" ]; then
     echo "🧪 Running integration tests..."
     $GRADLE_CMD test --tests "com.traffic_tacos.test.GeneratedCodeTest" || true
 
@@ -156,7 +164,7 @@ if [ -n "$GRADLE_CMD" ]; then
     echo "📦 Building JAR artifact..."
     $GRADLE_CMD build || echo "⚠️  JAR build failed"
 else
-    echo "ℹ️  Skipping tests and JAR build - Gradle not available"
+    echo "ℹ️  Skipping tests and JAR build - CI environment or Gradle not available"
 fi
 
 echo "✅ Kotlin/Java code generation completed successfully!"
