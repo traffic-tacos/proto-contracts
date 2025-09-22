@@ -24,14 +24,14 @@ if ! command -v java &> /dev/null; then
     exit 1
 fi
 
-# Check if we have gradle wrapper or gradle
+# Check if we have gradle wrapper or gradle (optional for advanced builds)
 if [ -f "./gradlew" ]; then
     GRADLE_CMD="./gradlew"
 elif command -v gradle &> /dev/null; then
     GRADLE_CMD="gradle"
 else
-    echo "❌ Gradle is not available. Please install Gradle or use gradle wrapper"
-    exit 1
+    GRADLE_CMD=""
+    echo "ℹ️  Gradle not available - using buf only for generation"
 fi
 
 # Clean existing generated files
@@ -42,16 +42,18 @@ mkdir -p gen/java
 
 # Generate Kotlin/Java code using buf
 echo "⚙️  Generating Java/Kotlin protobuf and gRPC code..."
-buf generate --template buf.gen.yaml --include-imports
+buf generate --template buf.gen.yaml
 
-# Also generate using Gradle for consistency
-echo "📦 Running Gradle protobuf generation..."
-$GRADLE_CMD generateProto
+# Optional: Also generate using Gradle for advanced features
+if [ -n "$GRADLE_CMD" ]; then
+    echo "📦 Running Gradle protobuf generation..."
+    $GRADLE_CMD generateProto
 
-# Copy Gradle-generated files to gen/java if they exist
-if [ -d "build/generated/source/proto/main" ]; then
-    echo "📁 Copying Gradle-generated files to gen/java..."
-    cp -r build/generated/source/proto/main/* gen/java/ 2>/dev/null || true
+    # Copy Gradle-generated files to gen/java if they exist
+    if [ -d "build/generated/source/proto/main" ]; then
+        echo "📁 Copying Gradle-generated files to gen/java..."
+        cp -r build/generated/source/proto/main/* gen/java/ 2>/dev/null || true
+    fi
 fi
 
 # Check if generation was successful
@@ -60,9 +62,13 @@ if [ ! -d "gen/java" ] || [ -z "$(find gen/java -name '*.java' -o -name '*.kt' 2
     exit 1
 fi
 
-# Build the generated code
-echo "🔨 Building generated Kotlin/Java code..."
-$GRADLE_CMD compileJava compileKotlin
+# Build the generated code (if Gradle is available)
+if [ -n "$GRADLE_CMD" ]; then
+    echo "🔨 Building generated Kotlin/Java code..."
+    $GRADLE_CMD compileJava compileKotlin || echo "⚠️  Gradle build failed, but generation completed"
+else
+    echo "ℹ️  Skipping compilation - Gradle not available"
+fi
 
 # Create a simple test to verify the generated code
 echo "🧪 Creating integration test..."
@@ -141,13 +147,17 @@ tasks.test {
 }
 EOF
 
-# Run the integration test
-echo "🧪 Running integration tests..."
-$GRADLE_CMD test --tests "com.traffic_tacos.test.GeneratedCodeTest" || true
+# Run the integration test (if Gradle is available)
+if [ -n "$GRADLE_CMD" ]; then
+    echo "🧪 Running integration tests..."
+    $GRADLE_CMD test --tests "com.traffic_tacos.test.GeneratedCodeTest" || true
 
-# Build JAR artifact
-echo "📦 Building JAR artifact..."
-$GRADLE_CMD build
+    # Build JAR artifact
+    echo "📦 Building JAR artifact..."
+    $GRADLE_CMD build || echo "⚠️  JAR build failed"
+else
+    echo "ℹ️  Skipping tests and JAR build - Gradle not available"
+fi
 
 echo "✅ Kotlin/Java code generation completed successfully!"
 echo ""

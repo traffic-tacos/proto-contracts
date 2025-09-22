@@ -1,6 +1,7 @@
 plugins {
     `java-library`
     `maven-publish`
+    kotlin("jvm") version "1.9.20"
     id("com.google.protobuf") version "0.9.4"
 }
 
@@ -14,11 +15,18 @@ java {
     withJavadocJar()
 }
 
+kotlin {
+    jvmToolchain(17)
+}
+
 repositories {
     mavenCentral()
 }
 
 dependencies {
+    // Kotlin
+    implementation(kotlin("stdlib"))
+
     // gRPC and Protobuf
     api("io.grpc:grpc-stub:1.60.1")
     api("io.grpc:grpc-protobuf:1.60.1")
@@ -63,7 +71,7 @@ protobuf {
 // Copy generated Java files to gen/java directory
 tasks.register<Copy>("copyGeneratedSources") {
     dependsOn("generateProto")
-    from("$buildDir/generated/source/proto/main")
+    from(layout.buildDirectory.dir("generated/source/proto/main"))
     into("gen/java")
 }
 
