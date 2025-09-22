@@ -1,5 +1,4 @@
-# Generated code directories
-gen/
+# Build directories (keep gen/ for proto contracts distribution)
 build/
 target/
 
