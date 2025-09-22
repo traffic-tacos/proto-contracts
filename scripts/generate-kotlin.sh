@@ -170,9 +170,21 @@ fi
 echo "✅ Kotlin/Java code generation completed successfully!"
 echo ""
 echo "Generated files:"
-find gen/java -name "*.java" -o -name "*.kt" | head -10
-if [ $(find gen/java -name "*.java" -o -name "*.kt" | wc -l) -gt 10 ]; then
-    echo "... and $(expr $(find gen/java -name "*.java" -o -name "*.kt" | wc -l) - 10) more files"
+
+# Count files once and store result
+GENERATED_FILES=$(find gen/java -name "*.java" -o -name "*.kt" 2>/dev/null || true)
+if [ -n "$GENERATED_FILES" ]; then
+    FILE_COUNT=$(echo "$GENERATED_FILES" | wc -l)
+
+    # Show first 10 files
+    echo "$GENERATED_FILES" | head -10
+
+    # Show count if more than 10
+    if [ "$FILE_COUNT" -gt 10 ]; then
+        echo "... and $(expr $FILE_COUNT - 10) more files"
+    fi
+else
+    echo "No generated files found"
 fi
 echo ""
 echo "📖 To use in Kotlin/Java projects:"
